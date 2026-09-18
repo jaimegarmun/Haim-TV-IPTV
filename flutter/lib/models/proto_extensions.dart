@@ -23,6 +23,8 @@ extension ChannelProtoExtension on pb.Channel {
     favorite: favorite,
     seriesId: hasSeriesId() ? seriesId.toInt() : null,
     streamId: hasStreamId() ? streamId.toInt() : null,
+    seasonId: hasSeasonId() ? seasonId.toInt() : null,
+    episodeNum: hasEpisodeNum() ? episodeNum.toInt() : null,
   );
 }
 

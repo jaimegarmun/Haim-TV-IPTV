@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:open_tv/back_navigation.dart';
+import 'package:open_tv/downloads_view.dart';
+import 'package:open_tv/favorites_hub.dart';
 import 'package:open_tv/home.dart';
 import 'package:open_tv/menu_tile.dart';
 import 'package:open_tv/models/filters.dart';
@@ -6,6 +9,7 @@ import 'package:open_tv/models/home_manager.dart';
 import 'package:open_tv/models/media_type.dart';
 import 'package:open_tv/models/view_type.dart';
 import 'package:open_tv/settings_view.dart';
+import 'package:open_tv/tv_live_folders.dart';
 import 'package:open_tv/utils.dart';
 
 class TvHome extends StatefulWidget {
@@ -45,17 +49,20 @@ class _TvHomeState extends State<TvHome> {
     );
   }
 
+  void navPage(Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (context) => page));
+  }
+
   void navSettings() {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => const SettingsView(tvMode: true),
-      ),
+      MaterialPageRoute(builder: (context) => const SettingsView(tvMode: true)),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: widget.nested ? tvBackAppBar(context) : null,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -143,6 +150,16 @@ class _TvHomeState extends State<TvHome> {
     return [
       MenuTile(
         autofocus: true,
+        icon: Icons.live_tv,
+        label: "Live TV",
+        color: const LinearGradient(
+          colors: [Colors.red, Colors.deepOrange],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        onTap: () => navPage(const TvLiveFolders()),
+      ),
+      MenuTile(
         icon: Icons.tv,
         label: "Channels",
         color: const LinearGradient(
@@ -170,7 +187,9 @@ class _TvHomeState extends State<TvHome> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        onTap: () => navNested(ViewType.favorites),
+        onTap: () => navPage(
+          FavoritesHub(openAllFavorites: () => navNested(ViewType.favorites)),
+        ),
       ),
       MenuTile(
         icon: Icons.history,
@@ -181,6 +200,16 @@ class _TvHomeState extends State<TvHome> {
           end: Alignment.bottomRight,
         ),
         onTap: () => navNested(ViewType.history),
+      ),
+      MenuTile(
+        icon: Icons.download_for_offline,
+        label: "Downloads",
+        color: LinearGradient(
+          colors: [Colors.indigo.shade700, Colors.lightBlue.shade400],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        onTap: () => navPage(const DownloadsView(tvMode: true)),
       ),
       MenuTile(
         icon: Icons.settings,

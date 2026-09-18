@@ -16,12 +16,12 @@ jobs:
 
       - name: Pin app source to this commit
         run: |
-          sed -i "0,/commit: .*/s//commit: ${GITHUB_SHA}/" flatpak/dev.fredol.fred-tv-next.yml
+          sed -i "0,/commit: .*/s//commit: ${GITHUB_SHA}/" flatpak/io.github.jaimegarmun.haimtv.yml
 
       - name: Build bundle
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
-          bundle: fred-tv-next.flatpak
-          manifest-path: flatpak/dev.fredol.fred-tv-next.yml
+          bundle: haim-tv.flatpak
+          manifest-path: flatpak/io.github.jaimegarmun.haimtv.yml
           cache-key: flatpak-builder-${{ github.sha }}
           arch: x86_64

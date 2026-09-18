@@ -1,5 +1,11 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:open_tv/back_navigation.dart';
 import 'package:open_tv/native_bridge.dart';
+import 'package:open_tv/services/download_manager.dart';
+import 'package:open_tv/side_margins.dart';
 import 'package:open_tv/bottom_nav.dart';
 import 'package:open_tv/confirm_delete.dart';
 import 'package:open_tv/models/filters.dart';
@@ -177,8 +183,7 @@ class _SettingsState extends State<SettingsView> {
               ),
             ),
             Offstage(
-              offstage:
-                  source.sourceType == SourceType.m3u || widget.tvMode,
+              offstage: source.sourceType == SourceType.m3u || widget.tvMode,
               child: IconButton(
                 icon: const Icon(Icons.edit),
                 onPressed: () async => await showEditDialog(context, source),
@@ -233,6 +238,77 @@ class _SettingsState extends State<SettingsView> {
     });
   }
 
+  Future<void> _chooseDownloadFolder() async {
+    final manager = DownloadManager.instance;
+    final path = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: "Choose the download folder",
+      initialDirectory: await manager.currentDirectory(),
+    );
+    if (path == null || !mounted) return;
+    await Error.tryAsync(
+      () => manager.setDirectory(path),
+      context,
+      "New downloads will be saved in $path",
+      false,
+    );
+  }
+
+  Future<void> _resetDownloadFolder() async {
+    await Error.tryAsync(
+      () => DownloadManager.instance.setDirectory(null),
+      context,
+      "Downloads will be saved in the default folder",
+      false,
+    );
+  }
+
+  Future<void> _openDownloadFolder() async {
+    final path = await DownloadManager.instance.currentDirectory();
+    await Directory(path).create(recursive: true);
+    await launchUrl(Uri.directory(path));
+  }
+
+  Widget _buildDownloadFolderTile() {
+    return ListenableBuilder(
+      listenable: DownloadManager.instance,
+      builder: (context, _) {
+        final custom = DownloadManager.instance.customDirectory;
+        return FutureBuilder<String>(
+          future: DownloadManager.instance.currentDirectory(),
+          builder: (context, snapshot) => ListTile(
+            title: const Text("Download folder"),
+            subtitle: Text(
+              "${snapshot.data ?? "..."}${custom == null ? "  (default)" : ""}",
+            ),
+            onTap: _chooseDownloadFolder,
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
+                  IconButton(
+                    tooltip: "Open folder",
+                    icon: const Icon(Icons.folder_open),
+                    onPressed: _openDownloadFolder,
+                  ),
+                IconButton(
+                  tooltip: "Change folder",
+                  icon: const Icon(Icons.edit),
+                  onPressed: _chooseDownloadFolder,
+                ),
+                if (custom != null)
+                  IconButton(
+                    tooltip: "Use the default folder",
+                    icon: const Icon(Icons.restore),
+                    onPressed: _resetDownloadFolder,
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   Future<void> updateSettings() async {
     await Error.tryAsyncNoLoading(
       () async => await NativeBridge.instance.updateSettings(settings),
@@ -243,10 +319,12 @@ class _SettingsState extends State<SettingsView> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: widget.tvMode ? tvBackAppBar(context) : null,
       body: Visibility(
         visible: !loading,
         child: Loading(
           child: SafeArea(
+            minimum: sideMarginInsets(context),
             child: Padding(
               padding: const EdgeInsetsDirectional.symmetric(vertical: 10),
               child: ListView(
@@ -263,18 +341,6 @@ class _SettingsState extends State<SettingsView> {
                     ),
                   ),
                   const SizedBox(height: 10),
-                  ListTile(
-                    title: const Text("Donate"),
-                    subtitle: const Text(
-                      "Fred TV needs your help! Consider donating ❤️",
-                    ),
-                    onTap: () async => await launchUrl(
-                      Uri.parse(
-                        "https://github.com/Fredolx/fred-tv-mobile/discussions/1",
-                      ),
-                      mode: LaunchMode.externalApplication,
-                    ),
-                  ),
                   ListTile(
                     title: const Text("Default view"),
                     subtitle: Text(viewTypeToString(settings.defaultView)),
@@ -385,6 +451,25 @@ class _SettingsState extends State<SettingsView> {
                           },
                         ),
                       ],
+                    ),
+                  ),
+                  const Divider(),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 10),
+                    child: Text(
+                      'Downloads',
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  _buildDownloadFolderTile(),
+                  const Padding(
+                    padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Text(
+                      "Only new downloads use the new folder; existing ones stay where they are.",
+                      style: TextStyle(color: Colors.grey),
                     ),
                   ),
                   const Divider(),

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Haim TV
+GenericName=IPTV Player
+Comment=Simple and fast IPTV player.
+Exec=haim_tv
+Icon=io.github.jaimegarmun.haimtv
+Terminal=false
+Categories=AudioVideo;Video;Player;TV;
+Keywords=IPTV;M3U;Xtream;TV;Streaming;open;tv;opentv
+StartupWMClass=io.github.jaimegarmun.haimtv
+StartupNotify=true

@@ -13,6 +13,13 @@ import 'package:open_tv/models/settings.dart';
 import 'package:open_tv/native_bridge.dart';
 import 'package:open_tv/select_dialog.dart';
 import 'package:open_tv/error.dart';
+import 'package:flutter/gestures.dart'
+    show kBackMouseButton, kForwardMouseButton;
+import 'package:open_tv/live_timeshift_bar.dart';
+import 'package:open_tv/memory.dart';
+import 'package:open_tv/player_osd.dart';
+import 'package:open_tv/services/download_manager.dart';
+import 'package:open_tv/services/watch_progress.dart';
 
 class Player extends StatefulWidget {
   final Channel channel;
@@ -31,10 +38,21 @@ class _PlayerState extends State<Player> {
   bool exiting = false;
   bool fill = false;
   List<StreamSubscription> subscriptions = [];
+  DateTime _lastProgressSave = DateTime.now();
+  final ValueNotifier<OsdEvent?> osd = ValueNotifier(null);
+  double _volumeBeforeMute = 100;
+
+  /// Finished download of this channel, played instead of the stream.
+  late final String? localFile = DownloadManager.instance.localFileFor(
+    widget.channel.url,
+  );
+
+  bool get _isMovie => widget.channel.mediaType == MediaType.movie;
 
   @override
   void initState() {
     super.initState();
+    videoPlayerOpen = true;
     mk.MediaKit.ensureInitialized();
     initAsync();
   }
@@ -42,18 +60,54 @@ class _PlayerState extends State<Player> {
   Future<void> initAsync() async {
     player.setPlaylistMode(mk.PlaylistMode.none);
     await setMpvOptions();
-    final seconds = widget.channel.mediaType == MediaType.movie
-        ? (await Error.tryAsyncNoLoading(() async {
-            return await NativeBridge.instance.getMoviePosition(
-              widget.channel.id!,
-            );
-          }, context)).data
-        : null;
+    final seconds = _isMovie ? await _startSeconds() : null;
     await _startPlayback(seconds != null ? Duration(seconds: seconds) : null);
     subscriptions.add(
       player.stream.completed.listen((completed) {
-        if (completed) onDisconnect();
+        if (!completed) return;
+        if (_isMovie) {
+          final duration = player.state.duration.inSeconds;
+          WatchProgressStore.instance.update(
+            widget.channel.url,
+            widget.channel.name,
+            duration,
+            duration,
+            flush: true,
+          );
+        }
+        onDisconnect();
       }),
+    );
+    if (_isMovie) {
+      subscriptions.add(player.stream.position.listen(_onPosition));
+    }
+  }
+
+  Future<int?> _startSeconds() async {
+    final store = WatchProgressStore.instance;
+    if (store.get(widget.channel.url) != null) {
+      return store.resumePosition(widget.channel.url);
+    }
+    // Positions saved before watch_progress.json existed.
+    if (widget.channel.id == null) return null;
+    return (await Error.tryAsyncNoLoading(() async {
+      return await NativeBridge.instance.getMoviePosition(widget.channel.id!);
+    }, context)).data;
+  }
+
+  /// Saves progress regularly so it survives the app being killed.
+  void _onPosition(Duration position) {
+    if (exiting || position.inSeconds <= 0) return;
+    final now = DateTime.now();
+    if (now.difference(_lastProgressSave) < const Duration(seconds: 10)) {
+      return;
+    }
+    _lastProgressSave = now;
+    WatchProgressStore.instance.update(
+      widget.channel.url,
+      widget.channel.name,
+      position.inSeconds,
+      player.state.duration.inSeconds,
     );
   }
 
@@ -63,10 +117,18 @@ class _PlayerState extends State<Player> {
       if (widget.channel.mediaType == MediaType.livestream) {
         if (widget.settings.lowLatency) {
           await nativePlayer.setProperty('profile', 'low-latency');
+        } else {
+          await enableLiveTimeshift(nativePlayer);
         }
       }
     }
   }
+
+  /// Live channels can be paused and rewound, unless low latency mode
+  /// disabled the cache.
+  bool get _liveTimeshift =>
+      widget.channel.mediaType == MediaType.livestream &&
+      !widget.settings.lowLatency;
 
   void onDisconnect() async {
     if (!mounted || exiting) return;
@@ -82,14 +144,16 @@ class _PlayerState extends State<Player> {
     while (true) {
       if (!mounted || exiting) return;
       try {
-        final headers = (await Error.tryAsyncNoLoading(() async {
-          return await NativeBridge.instance.getChannelHeaders(
-            widget.channel.id!,
-          );
-        }, context)).data;
+        final headers = localFile != null || widget.channel.id == null
+            ? null
+            : (await Error.tryAsyncNoLoading(() async {
+                return await NativeBridge.instance.getChannelHeaders(
+                  widget.channel.id!,
+                );
+              }, context)).data;
         await player.open(
           mk.Media(
-            widget.channel.url!,
+            localFile ?? widget.channel.url!,
             start: startPosition,
             httpHeaders: headers != null
                 ? {
@@ -116,6 +180,8 @@ class _PlayerState extends State<Player> {
   @override
   void dispose() {
     for (final s in subscriptions) s.cancel();
+    videoPlayerOpen = false;
+    osd.dispose();
     player.dispose();
     super.dispose();
   }
@@ -192,7 +258,7 @@ class _PlayerState extends State<Player> {
               onExitFullscreen: (Platform.isAndroid || Platform.isIOS)
                   ? () async => onExit()
                   : defaultExitNativeFullscreen,
-              controls: AdaptiveVideoControls,
+              controls: buildControls,
             ),
           ),
         ),
@@ -203,11 +269,20 @@ class _PlayerState extends State<Player> {
   void onExit() async {
     if (exiting) return;
     exiting = true;
-    if (widget.channel.mediaType == MediaType.movie) {
-      NativeBridge.instance.setMoviePosition(
-        widget.channel.id!,
+    if (_isMovie) {
+      WatchProgressStore.instance.update(
+        widget.channel.url,
+        widget.channel.name,
         player.state.position.inSeconds,
+        player.state.duration.inSeconds,
+        flush: true,
       );
+      if (widget.channel.id != null) {
+        NativeBridge.instance.setMoviePosition(
+          widget.channel.id!,
+          player.state.position.inSeconds,
+        );
+      }
     }
     if (key.currentState!.isFullscreen()) {
       await key.currentState!.exitFullscreen();
@@ -223,6 +298,109 @@ class _PlayerState extends State<Player> {
       ]);
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     }
+  }
+
+  void seekBy(Duration offset) {
+    final duration = player.state.duration;
+    var target = player.state.position + offset;
+    if (target < Duration.zero) target = Duration.zero;
+    if (duration > Duration.zero && target > duration) target = duration;
+    player.seek(target);
+  }
+
+  /// Live channels without the timeshift cache cannot seek.
+  bool get _canSeek =>
+      widget.channel.mediaType != MediaType.livestream || _liveTimeshift;
+
+  /// Seeks and shows the feedback on the side of the screen, like YouTube.
+  void seekWithOsd(int seconds) {
+    if (!_canSeek) return;
+    seekBy(Duration(seconds: seconds));
+    osd.value = OsdEvent(
+      seconds < 0 ? Icons.fast_rewind : Icons.fast_forward,
+      "${seconds.abs()} s",
+      seconds < 0 ? Alignment.centerLeft : Alignment.centerRight,
+    );
+  }
+
+  void changeVolumeWithOsd(double delta) {
+    final volume = (player.state.volume + delta).clamp(0.0, 100.0);
+    player.setVolume(volume);
+    if (volume > 0) _volumeBeforeMute = volume;
+    _showVolume(volume);
+  }
+
+  void toggleMute() {
+    final volume = player.state.volume > 0 ? 0.0 : _volumeBeforeMute;
+    player.setVolume(volume);
+    _showVolume(volume);
+  }
+
+  void _showVolume(double volume) {
+    osd.value = OsdEvent(
+      volume == 0
+          ? Icons.volume_off
+          : volume < 50
+          ? Icons.volume_down
+          : Icons.volume_up,
+      "${volume.round()}%",
+      Alignment.topCenter,
+    );
+  }
+
+  void togglePlayWithOsd() {
+    player.playOrPause();
+    osd.value = OsdEvent(
+      player.state.playing ? Icons.pause : Icons.play_arrow,
+      player.state.playing ? "Pause" : "Play",
+      Alignment.center,
+    );
+  }
+
+  /// Desktop keyboard shortcuts (they replace media_kit's defaults).
+  Map<ShortcutActivator, VoidCallback> get desktopShortcuts => {
+    const SingleActivator(LogicalKeyboardKey.space): togglePlayWithOsd,
+    const SingleActivator(LogicalKeyboardKey.keyK): togglePlayWithOsd,
+    const SingleActivator(LogicalKeyboardKey.mediaPlayPause):
+        player.playOrPause,
+    const SingleActivator(LogicalKeyboardKey.mediaPlay): player.play,
+    const SingleActivator(LogicalKeyboardKey.mediaPause): player.pause,
+    const SingleActivator(LogicalKeyboardKey.arrowLeft): () => seekWithOsd(-5),
+    const SingleActivator(LogicalKeyboardKey.arrowRight): () => seekWithOsd(5),
+    const SingleActivator(LogicalKeyboardKey.keyJ): () => seekWithOsd(-10),
+    const SingleActivator(LogicalKeyboardKey.keyL): () => seekWithOsd(10),
+    const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
+        changeVolumeWithOsd(5),
+    const SingleActivator(LogicalKeyboardKey.arrowDown): () =>
+        changeVolumeWithOsd(-5),
+    const SingleActivator(LogicalKeyboardKey.keyM): toggleMute,
+    const SingleActivator(LogicalKeyboardKey.keyF): () =>
+        key.currentState?.toggleFullscreen(),
+    const SingleActivator(LogicalKeyboardKey.escape): () {
+      if (key.currentState?.isFullscreen() ?? false) {
+        key.currentState?.exitFullscreen();
+      } else {
+        onExit();
+      }
+    },
+  };
+
+  /// Mouse side buttons (back / forward) seek 5 seconds.
+  void _onPointerDown(PointerDownEvent event) {
+    if (event.buttons & kBackMouseButton != 0) seekWithOsd(-5);
+    if (event.buttons & kForwardMouseButton != 0) seekWithOsd(5);
+  }
+
+  Widget buildControls(VideoState state) {
+    return Listener(
+      onPointerDown: _onPointerDown,
+      child: Stack(
+        children: [
+          AdaptiveVideoControls(state),
+          Positioned.fill(child: PlayerOsd(events: osd)),
+        ],
+      ),
+    );
   }
 
   void toggleZoom() {
@@ -274,16 +452,15 @@ class _PlayerState extends State<Player> {
         ),
         if (!(Platform.isAndroid || Platform.isIOS)) ...[
           const Spacer(),
-          const MaterialFullscreenButton(
-            iconSize: 32,
-            iconColor: Colors.white,
-          ),
+          const MaterialFullscreenButton(iconSize: 32, iconColor: Colors.white),
         ],
       ],
     );
   }
 
-  MaterialDesktopVideoControlsThemeData getDesktopThemeData(BuildContext context) {
+  MaterialDesktopVideoControlsThemeData getDesktopThemeData(
+    BuildContext context,
+  ) {
     return MaterialDesktopVideoControlsThemeData(
       seekBarMargin: const EdgeInsets.only(bottom: 60),
       seekBarThumbSize: 20,
@@ -291,6 +468,10 @@ class _PlayerState extends State<Player> {
       displaySeekBar: widget.channel.mediaType != MediaType.livestream,
       hideMouseOnControlsRemoval: true,
       controlsHoverDuration: const Duration(seconds: 3),
+      keyboardShortcuts: desktopShortcuts,
+      // Clicking the video pauses/resumes, like most desktop players.
+      playAndPauseOnTap:
+          widget.channel.mediaType != MediaType.livestream || _liveTimeshift,
       topButtonBar: [
         IconButton(
           onPressed: onExit,
@@ -300,6 +481,37 @@ class _PlayerState extends State<Player> {
         Text(widget.channel.name),
       ],
       bottomButtonBar: [
+        if (widget.channel.mediaType != MediaType.livestream) ...[
+          MaterialDesktopCustomButton(
+            icon: const Icon(Icons.replay_10),
+            iconSize: 32,
+            iconColor: Colors.white,
+            onPressed: () => seekBy(const Duration(seconds: -10)),
+          ),
+          const MaterialDesktopPlayOrPauseButton(
+            iconSize: 32,
+            iconColor: Colors.white,
+          ),
+          MaterialDesktopCustomButton(
+            icon: const Icon(Icons.forward_10),
+            iconSize: 32,
+            iconColor: Colors.white,
+            onPressed: () => seekBy(const Duration(seconds: 10)),
+          ),
+        ],
+        if (_liveTimeshift)
+          const MaterialDesktopPlayOrPauseButton(
+            iconSize: 32,
+            iconColor: Colors.white,
+          ),
+        const MaterialDesktopVolumeButton(
+          iconSize: 32,
+          iconColor: Colors.white,
+        ),
+        if (widget.channel.mediaType != MediaType.livestream)
+          const MaterialDesktopPositionIndicator(),
+        if (_liveTimeshift) Expanded(child: LiveTimeshiftBar(player: player)),
+        const SizedBox(width: 20),
         IconButton(
           onPressed: openSubtitlesModal,
           icon: const Icon(Icons.subtitles, color: Colors.white, size: 32),
@@ -318,7 +530,7 @@ class _PlayerState extends State<Player> {
           ),
           onPressed: toggleZoom,
         ),
-        const Spacer(),
+        if (!_liveTimeshift) const Spacer(),
         const MaterialDesktopFullscreenButton(
           iconSize: 32,
           iconColor: Colors.white,

@@ -1,10 +1,15 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:open_tv/side_margins.dart';
 import 'package:flutter/services.dart';
+import 'package:open_tv/back_navigation.dart';
 import 'package:open_tv/native_bridge.dart';
 import 'package:open_tv/bottom_nav.dart';
 import 'package:open_tv/channel_tile.dart';
+import 'package:open_tv/downloads_view.dart';
+import 'package:open_tv/favorites_hub.dart';
+import 'package:open_tv/services/favorite_folders.dart';
 import 'package:open_tv/loading.dart';
 import 'package:open_tv/models/channel.dart';
 import 'package:open_tv/models/filters.dart';
@@ -58,7 +63,28 @@ class _HomeState extends State<Home> {
     _searchFocusNode.onKey = _handleSearchRawKey;
     _keywordsFocusNode.onKeyEvent = _handleKeywordsKeyEvent;
     _sortFocusNode.onKeyEvent = _handleSortKeyEvent;
+    FavoriteFoldersStore.instance.addListener(_onFoldersChanged);
     initializeAsync();
+  }
+
+  bool get _isFavoritesRoot =>
+      widget.home.node == null &&
+      widget.home.filters.viewType == ViewType.favorites;
+
+  /// The favorites root works like a file system: folders first, then only
+  /// the favorites that are not inside any folder. Searching looks
+  /// everywhere.
+  bool get _showFolders =>
+      _isFavoritesRoot && (widget.home.filters.query ?? "").isEmpty;
+
+  List<FavoriteFolder> get _folders =>
+      _showFolders ? FavoriteFoldersStore.instance.folders : const [];
+
+  /// Folder tiles, plus the "New folder" tile.
+  int get _folderTileCount => _showFolders ? _folders.length + 1 : 0;
+
+  void _onFoldersChanged() {
+    if (mounted && _isFavoritesRoot) load(false);
   }
 
   Future<void> initializeAsync() async {
@@ -133,6 +159,25 @@ class _HomeState extends State<Home> {
       List<Channel> channels = await NativeBridge.instance.getChannels(
         widget.home.filters,
       );
+      reachedMax = channels.length < pageSize;
+      if (_showFolders) {
+        channels = _outsideFolders(channels);
+        // Whole pages can be hidden by folders; keep going so the list
+        // fills up and infinite scroll still triggers.
+        for (
+          var i = 0;
+          i < 10 && !reachedMax && channels.length < pageSize;
+          i++
+        ) {
+          widget.home.filters.page++;
+          final next = await NativeBridge.instance.getChannels(
+            widget.home.filters,
+          );
+          reachedMax = next.length < pageSize;
+          channels.addAll(_outsideFolders(next));
+        }
+      }
+      if (!mounted) return;
       if (!more) {
         setState(() {
           this.channels = channels;
@@ -142,12 +187,16 @@ class _HomeState extends State<Home> {
           this.channels.addAll(channels);
         });
       }
-      reachedMax = channels.length < pageSize;
     }, context);
   }
 
+  List<Channel> _outsideFolders(List<Channel> channels) => channels
+      .where((c) => FavoriteFoldersStore.instance.foldersContaining(c).isEmpty)
+      .toList();
+
   @override
   void dispose() {
+    FavoriteFoldersStore.instance.removeListener(_onFoldersChanged);
     _scrollController.dispose();
     _debounce?.cancel();
     _searchFocusNode.dispose();
@@ -317,8 +366,7 @@ class _HomeState extends State<Home> {
     }
     Navigator.of(context).push(
       NoPushAnimationMaterialPageRoute(
-        builder: (context) =>
-            Home(home: home, tvMode: widget.tvMode),
+        builder: (context) => Home(home: home, tvMode: widget.tvMode),
       ),
     );
   }
@@ -329,17 +377,20 @@ class _HomeState extends State<Home> {
       appBar: widget.home.node != null
           ? AppBar(
               title: Text(widget.home.node.toString()),
-              automaticallyImplyLeading: !widget.tvMode,
-              leading: !widget.tvMode
+              automaticallyImplyLeading: showBackArrow(widget.tvMode),
+              leading: showBackArrow(widget.tvMode)
                   ? IconButton(
                       icon: const Icon(Icons.arrow_back),
                       onPressed: () => Navigator.of(context).pop(),
                     )
                   : null,
             )
+          : widget.tvMode
+          ? tvBackAppBar(context)
           : null,
       body: Loading(
         child: SafeArea(
+          minimum: sideMarginInsets(context),
           child: LayoutBuilder(
             builder: (context, constraints) {
               final double width = constraints.maxWidth;
@@ -404,6 +455,18 @@ class _HomeState extends State<Home> {
                                   onPressed: showSortDialog,
                                   icon: const Icon(Icons.sort),
                                 ),
+                                if (!widget.tvMode)
+                                  IconButton(
+                                    tooltip: "Downloads",
+                                    onPressed: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => const DownloadsView(),
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.download_for_offline_outlined,
+                                    ),
+                                  ),
                               ],
                             ),
                             filled: true,
@@ -416,7 +479,17 @@ class _HomeState extends State<Home> {
                     padding: const EdgeInsets.fromLTRB(10, 5, 10, 10),
                     sliver: SliverGrid(
                       delegate: SliverChildBuilderDelegate((context, index) {
-                        final channel = channels[index];
+                        final folders = _folders;
+                        if (index < _folderTileCount) {
+                          return FavoriteFolderCard(
+                            folder: index < folders.length
+                                ? folders[index]
+                                : null,
+                            tvMode: widget.tvMode,
+                            autofocus: index == currentlyFocusedChannel,
+                          );
+                        }
+                        final channel = channels[index - _folderTileCount];
                         return ChannelTile(
                           channel: channel,
                           parentContext: context,
@@ -424,7 +497,7 @@ class _HomeState extends State<Home> {
                           autofocus: index == currentlyFocusedChannel,
                           onSelect: () => currentlyFocusedChannel = index,
                         );
-                      }, childCount: channels.length),
+                      }, childCount: _folderTileCount + channels.length),
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: crossAxisCount,
                         mainAxisExtent: 100,

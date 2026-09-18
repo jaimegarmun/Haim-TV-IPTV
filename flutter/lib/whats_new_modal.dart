@@ -16,14 +16,14 @@ class WhatsNewModal extends StatelessWidget {
           onPressed: () async {
             await launchUrl(
               Uri.parse(
-                "https://github.com/Fredolx/fred-tv-mobile/discussions/1",
+                "https://github.com/jaimegarmun/Haim-TV-IPTV/releases",
               ),
               mode: LaunchMode.externalApplication,
             );
             if (!context.mounted) return;
             Navigator.pop(context, false);
           },
-          child: const Text("Donate"),
+          child: const Text("Releases"),
         ),
         TextButton(
           autofocus: true,
@@ -43,27 +43,18 @@ class WhatsNewModal extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.only(right: 8.0),
             child: Text('''
-Hi! Thanks for supporting Fred TV. Here's everything new:
+Welcome to Haim TV! Here's what it can do:
 
-This major version:
+- Download movies and episodes to watch offline
+- Resume where you left off, with a tick on watched episodes
+- Live TV folders by network and country (TV mode)
+- Your own folders inside Favorites
+- Rewind live channels on PC (timeshift bar)
+- Double tap the sides to skip 10 s on mobile
+- Keyboard shortcuts and volume indicator on PC
+- Right click or long press any item for more options
 
-- Super robust and smooth native playback on Android using ExoPlayer
-- Android TV Support 
-- Easy-to-use redesigned Home for TV
-- Full D-Pad navigation support
-- Speed and performance optimizations, the app is at least 50% faster!
-- Fixed all xtream and m3u parsing issues (hopefully)
-- Sorting added
-- Fixed a bug where the mobile nav would appear in the TV nav
-- Fixed android player going to sleep
-- Fixed bug where setup could be popped while it was loading a source
-
-This minor version: 
-
-- Fixed TV home not being displayed after setup on Android TV
-- Fixed 'All' on TV home not actually showing ALL media types
-
-If you like Fred TV, please consider donating (Even a dollar helps tremendously), reporting issues on the github and sharing it with your friends.
+Found a problem? Report it on GitHub from any error message.
 '''),
           ),
         ),

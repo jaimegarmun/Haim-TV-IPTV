@@ -19,7 +19,7 @@ class CorrectionModal extends StatelessWidget {
         ),
       ],
       content: const Text(
-        "It seems your url is not pointing to an Xtream API server, Fred TV can correct the URL automatically for you",
+        "It seems your url is not pointing to an Xtream API server, Haim TV can correct the URL automatically for you",
       ),
     );
   }

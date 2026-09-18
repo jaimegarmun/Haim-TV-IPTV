@@ -7,7 +7,7 @@ Offline manifest generated with [flatpak-flutter](https://github.com/TheAppginee
 | File | |
 | --- | --- |
 | `flatpak-flutter.yml` | input template (edit this) |
-| `dev.fredol.fred-tv-next.yml` | generated manifest (build this) |
+| `io.github.jaimegarmun.haimtv.yml` | generated manifest (build this) |
 | `generated/` | vendored pub/cargo sources, Flutter SDK, rustup (generated) |
 | `modules/mpv.yml` | libmpv + deps from source, media_kit needs `pkg-config mpv` |
 | `foreign.json` | points flatpak-flutter at Cargo.lock |
@@ -29,20 +29,20 @@ FLATPAK_FLUTTER_ROOT=~/git/flatpak-flutter \
 ```sh
 flatpak run org.flatpak.Builder \
   --force-clean --sandbox --user --install-deps-from=flathub \
-  --repo=repo build-dir dev.fredol.fred-tv-next.yml
+  --repo=repo build-dir io.github.jaimegarmun.haimtv.yml
 ```
 
 ## 3. Generate the .flatpak
 
 ```sh
-flatpak build-bundle repo fred-tv-next.flatpak dev.fredol.fred-tv-next \
+flatpak build-bundle repo haim-tv.flatpak io.github.jaimegarmun.haimtv \
   --runtime-repo=https://flathub.org/repo/flathub.flatpakrepo
 ```
 
 ## 4. Install the flatpak
 
 ```sh
-flatpak install --user ./fred-tv-next.flatpak
+flatpak install --user ./haim-tv.flatpak
 ```
 
 CI (`.github/workflows/flatpak.yml`) does 2 and 3 and uploads the bundle as an artifact.

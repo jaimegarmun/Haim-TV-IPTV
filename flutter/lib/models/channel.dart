@@ -12,6 +12,8 @@ class Channel {
   bool favorite;
   int? seriesId;
   int? streamId;
+  int? seasonId;
+  int? episodeNum;
 
   Channel({
     this.id,
@@ -25,5 +27,7 @@ class Channel {
     required this.favorite,
     this.seriesId,
     this.streamId,
+    this.seasonId,
+    this.episodeNum,
   });
 }

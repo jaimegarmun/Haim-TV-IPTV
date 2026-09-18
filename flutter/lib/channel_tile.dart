@@ -2,8 +2,11 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:open_tv/channel_actions.dart';
 import 'package:open_tv/memory.dart';
 import 'package:open_tv/models/channel.dart';
+import 'package:open_tv/services/download_manager.dart';
+import 'package:open_tv/services/watch_progress.dart';
 import 'package:open_tv/error.dart';
 import 'package:open_tv/models/media_type.dart';
 import 'package:open_tv/models/node.dart';
@@ -20,6 +23,13 @@ class ChannelTile extends StatefulWidget {
   final VoidCallback? onFocusNavbar;
   final VoidCallback onSelect;
   final bool autofocus;
+
+  /// Set when the tile is shown inside a favorites folder.
+  final String? folderId;
+
+  /// Called after the long-press menu changed something (e.g. removed the
+  /// channel from a folder) so the parent list can reload.
+  final VoidCallback? onChanged;
   const ChannelTile({
     super.key,
     required this.channel,
@@ -28,6 +38,8 @@ class ChannelTile extends StatefulWidget {
     required this.onSelect,
     this.onFocusNavbar,
     this.autofocus = false,
+    this.folderId,
+    this.onChanged,
   });
 
   @override
@@ -119,7 +131,7 @@ class _ChannelTileState extends State<ChannelTile> {
           _longPressTriggered = true;
           _confirmSplash();
           _statesController.update(WidgetState.pressed, false);
-          favorite();
+          showOptions();
         });
       } else if (event is KeyUpEvent) {
         if (!_selectKeyDown) {
@@ -149,24 +161,17 @@ class _ChannelTileState extends State<ChannelTile> {
     super.dispose();
   }
 
-  Future<void> favorite() async {
-    if (widget.channel.mediaType == MediaType.group) return;
-    await Error.tryAsyncNoLoading(() async {
-      await NativeBridge.instance.favorite(
-        widget.channel.id!,
-        !widget.channel.favorite,
-      );
-      if (!mounted) return;
-      setState(() {
-        widget.channel.favorite = !widget.channel.favorite;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Added to favorites"),
-          duration: Duration(milliseconds: 500),
-        ),
-      );
-    }, context);
+  Future<void> showOptions() async {
+    await showChannelOptions(
+      context,
+      widget.channel,
+      folderId: widget.folderId,
+      onChanged: () {
+        if (mounted) setState(() {});
+        widget.onChanged?.call();
+      },
+    );
+    if (mounted) _focusNode.requestFocus();
   }
 
   Future<int?> _handleSeries() async {
@@ -186,6 +191,7 @@ class _ChannelTileState extends State<ChannelTile> {
       }
       return null;
     }
+    seriesNames[seriesId] = widget.channel.name;
     await Error.tryAsync(
       () async {
         await NativeBridge.instance.getEpisodes(
@@ -210,6 +216,13 @@ class _ChannelTileState extends State<ChannelTile> {
       seriesId = await _handleSeries();
       if (seriesId == null) return;
     }
+    if (widget.channel.mediaType == MediaType.season &&
+        widget.channel.id != null) {
+      seasonInfo[widget.channel.id!] = (
+        seriesId: widget.channel.seriesId,
+        name: widget.channel.name,
+      );
+    }
 
     if (widget.channel.mediaType == MediaType.group ||
         widget.channel.mediaType == MediaType.serie ||
@@ -227,7 +240,9 @@ class _ChannelTileState extends State<ChannelTile> {
       );
     } else {
       var settings = await NativeBridge.instance.getSettings();
-      NativeBridge.instance.addLastWatched(widget.channel.id!);
+      if (widget.channel.id != null) {
+        NativeBridge.instance.addLastWatched(widget.channel.id!);
+      }
       if (!mounted) return;
       await Navigator.push(
         context,
@@ -255,65 +270,165 @@ class _ChannelTileState extends State<ChannelTile> {
             autofocus: widget.autofocus,
             statesController: _statesController,
             borderRadius: BorderRadius.circular(12),
-            onLongPress: favorite,
+            onLongPress: showOptions,
+            onSecondaryTap: showOptions,
             onTap: () async => await play(),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Stack(
               children: [
-                AspectRatio(
-                  aspectRatio: 1,
-                  child: Container(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Center(
-                      child: widget.channel.image != null
-                          ? CachedNetworkImage(
-                              imageUrl: widget.channel.image!,
-                              memCacheHeight: 300,
-                              memCacheWidth: 300,
-                              fit: BoxFit.contain,
-                              errorWidget: (_, __, ___) => const Icon(
-                                Icons.tv,
-                                size: 45,
-                                color: Colors.grey,
-                              ),
-                            )
-                          : const Icon(Icons.tv, size: 45, color: Colors.grey),
-                    ),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        widget.channel.name,
-                        textAlign: TextAlign.left,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: Theme.of(
-                            context,
-                          ).textTheme.titleMedium?.fontSize!,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                if (widget.channel.favorite)
-                  const Padding(
-                    padding: EdgeInsets.only(right: 8.0),
-                    child: Center(
-                      child: Icon(Icons.star, size: 25, color: Colors.amber),
-                    ),
+                Positioned.fill(child: _buildContent(context)),
+                if (widget.channel.mediaType == MediaType.movie)
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: _buildProgressBar(),
                   ),
               ],
             ),
           );
         },
       ),
+    );
+  }
+
+  /// Partially watched movies/episodes get a thin progress bar.
+  Widget _buildProgressBar() {
+    return ListenableBuilder(
+      listenable: WatchProgressStore.instance,
+      builder: (context, _) {
+        final progress = WatchProgressStore.instance.get(widget.channel.url);
+        final fraction = progress?.fraction;
+        if (progress == null ||
+            progress.watched ||
+            fraction == null ||
+            progress.positionSeconds < WatchProgressStore.minResumeSeconds) {
+          return const SizedBox.shrink();
+        }
+        return ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(12),
+          ),
+          child: LinearProgressIndicator(
+            value: fraction,
+            minHeight: 4,
+            backgroundColor: Colors.white12,
+            color: Colors.redAccent,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Watched tick and download state, shown before opening the item.
+  Widget _buildStatusIcons() {
+    if (widget.channel.mediaType != MediaType.movie) {
+      return const SizedBox.shrink();
+    }
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        WatchProgressStore.instance,
+        DownloadManager.instance,
+      ]),
+      builder: (context, _) {
+        final watched = WatchProgressStore.instance.isWatched(
+          widget.channel.url,
+        );
+        final download = DownloadManager.instance.find(widget.channel.url);
+        final icons = <Widget>[
+          if (download != null) _downloadIcon(download),
+          if (watched)
+            const Tooltip(
+              message: "Watched",
+              child: Icon(Icons.check_circle, size: 25, color: Colors.green),
+            ),
+        ];
+        if (icons.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: icons,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _downloadIcon(DownloadItem download) {
+    switch (download.status) {
+      case DownloadStatus.completed:
+        return const Tooltip(
+          message: "Downloaded",
+          child: Icon(Icons.download_done, size: 22, color: Colors.lightBlue),
+        );
+      case DownloadStatus.downloading:
+        return SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(
+            strokeWidth: 2.5,
+            value: download.fraction,
+          ),
+        );
+      case DownloadStatus.queued:
+        return const Icon(Icons.schedule, size: 20, color: Colors.grey);
+      case DownloadStatus.paused:
+        return const Icon(Icons.pause_circle, size: 20, color: Colors.grey);
+      case DownloadStatus.failed:
+        return const Icon(Icons.error, size: 20, color: Colors.redAccent);
+    }
+  }
+
+  Widget _buildContent(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AspectRatio(
+          aspectRatio: 1,
+          child: Container(
+            padding: const EdgeInsets.all(8.0),
+            child: Center(
+              child: widget.channel.image != null
+                  ? CachedNetworkImage(
+                      imageUrl: widget.channel.image!,
+                      memCacheHeight: 300,
+                      memCacheWidth: 300,
+                      fit: BoxFit.contain,
+                      errorWidget: (_, __, ___) =>
+                          const Icon(Icons.tv, size: 45, color: Colors.grey),
+                    )
+                  : const Icon(Icons.tv, size: 45, color: Colors.grey),
+            ),
+          ),
+        ),
+        Expanded(
+          flex: 3,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                widget.channel.name,
+                textAlign: TextAlign.left,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: Theme.of(context).textTheme.titleMedium?.fontSize!,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ),
+        _buildStatusIcons(),
+        if (widget.channel.favorite)
+          const Padding(
+            padding: EdgeInsets.only(right: 8.0),
+            child: Center(
+              child: Icon(Icons.star, size: 25, color: Colors.amber),
+            ),
+          ),
+      ],
     );
   }
 }

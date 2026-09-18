@@ -2,7 +2,9 @@ import 'dart:developer' as developer;
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart' show kBackMouseButton;
 import 'package:flutter/services.dart';
+import 'package:open_tv/memory.dart';
 import 'package:open_tv/generated/generated_proto.pb.dart' as gen;
 import 'package:open_tv/home.dart';
 import 'package:open_tv/models/custom_shortcut.dart';
@@ -10,6 +12,10 @@ import 'package:open_tv/models/device_detector.dart';
 import 'package:open_tv/models/filters.dart';
 import 'package:open_tv/models/home_manager.dart';
 import 'package:open_tv/models/settings.dart';
+import 'package:open_tv/services/data_migration.dart';
+import 'package:open_tv/services/download_manager.dart';
+import 'package:open_tv/services/favorite_folders.dart';
+import 'package:open_tv/services/watch_progress.dart';
 import 'package:open_tv/utils.dart';
 import 'package:open_tv/native_bridge.dart' as nb;
 import 'package:open_tv/setup.dart';
@@ -22,6 +28,7 @@ Future<void> main() async {
   if (!Platform.isAndroid) {
     MediaKit.ensureInitialized();
   }
+  DownloadManager.instance.movedDataFolder = await migrateLegacyWindowsData();
   final appDir = await getApplicationSupportDirectory();
   final tempDir = await getApplicationCacheDirectory();
   try {
@@ -34,10 +41,16 @@ Future<void> main() async {
         "Failed to initialize NativeBridge",
         error: e,
         stackTrace: stack,
-        name: "dev.fredol.open-tv",
+        name: "io.github.jaimegarmun.haimtv",
       );
     }
   }
+  await Future.wait([
+    WatchProgressStore.instance.load(),
+    FavoriteFoldersStore.instance.load(),
+    // Also resumes unfinished downloads.
+    DownloadManager.instance.load(),
+  ]);
   final hasSources = await nb.NativeBridge.instance.hasSources();
   final settings = await nb.NativeBridge.instance.getSettings();
   final hasTouchScreen = await Utils.hasTouchScreen();
@@ -88,7 +101,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Fred TV',
+      title: 'Haim TV',
       navigatorKey: navigatorKey,
       builder: (context, child) {
         return CallbackShortcuts(
@@ -106,7 +119,16 @@ class MyApp extends StatelessWidget {
               navigatorKey.currentState?.maybePop();
             },
           },
-          child: child ?? const SizedBox.shrink(),
+          // The mouse "back" side button goes back, except in the player
+          // where it seeks.
+          child: Listener(
+            onPointerDown: (event) {
+              if (event.buttons & kBackMouseButton != 0 && !videoPlayerOpen) {
+                navigatorKey.currentState?.maybePop();
+              }
+            },
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
       theme: ThemeData(

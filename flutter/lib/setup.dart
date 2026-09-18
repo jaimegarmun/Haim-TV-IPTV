@@ -389,7 +389,7 @@ class _SetupState extends State<Setup> {
     switch (step) {
       case Steps.welcome:
         return getPage(
-          "Welcome to Fred TV",
+          "Welcome to Haim TV",
           "Let's set up your ${widget.showAppBar ? "new" : "first"} source",
           null,
         );

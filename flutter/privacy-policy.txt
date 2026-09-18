@@ -1,12 +1,13 @@
 Privacy Policy
 
-Lachapelle Software is committed to ensuring the privacy and security of our users' personal information. 
-This Privacy Policy outlines how we collect, use, and protect the information you provide when using our mobile application.
+Haim TV is committed to ensuring the privacy and security of its users' personal information.
+This Privacy Policy outlines how information is handled when using the Haim TV application.
 
 Information Collection:
 
-We do not collect any personally identifiable information about you.
+Haim TV does not collect any personally identifiable information about you.
 
 Usage of Information:
 
-Since we do not collect any personal information, we do not use, store, or disclose any information about you.
+Since no personal information is collected, none is used, stored, or disclosed.
+Your playlists, favorites, watch progress and downloads are stored only on your own device.
