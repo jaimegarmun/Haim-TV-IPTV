@@ -3,6 +3,7 @@ import 'package:open_tv/back_navigation.dart';
 import 'package:open_tv/downloads_view.dart';
 import 'package:open_tv/favorites_hub.dart';
 import 'package:open_tv/home.dart';
+import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/menu_tile.dart';
 import 'package:open_tv/models/filters.dart';
 import 'package:open_tv/models/home_manager.dart';
@@ -10,6 +11,7 @@ import 'package:open_tv/models/media_type.dart';
 import 'package:open_tv/models/view_type.dart';
 import 'package:open_tv/settings_view.dart';
 import 'package:open_tv/tv_live_folders.dart';
+import 'package:open_tv/tv_search_view.dart';
 import 'package:open_tv/update_dialog.dart';
 import 'package:open_tv/utils.dart';
 
@@ -83,7 +85,7 @@ class _TvHomeState extends State<TvHome> {
       MenuTile(
         autofocus: true,
         icon: Icons.list,
-        label: "All",
+        label: tr("All"),
         color: const LinearGradient(
           colors: [Colors.blueGrey, Colors.blue],
           begin: Alignment.topLeft,
@@ -102,7 +104,7 @@ class _TvHomeState extends State<TvHome> {
       ),
       MenuTile(
         icon: Icons.live_tv,
-        label: "Live",
+        label: tr("Live"),
         color: const LinearGradient(
           colors: [Colors.amber, Colors.deepOrange],
           begin: Alignment.topLeft,
@@ -117,7 +119,7 @@ class _TvHomeState extends State<TvHome> {
       ),
       MenuTile(
         icon: Icons.movie,
-        label: "Vods",
+        label: tr("Vods"),
         color: LinearGradient(
           colors: [Colors.red, Colors.red.shade400],
           begin: Alignment.topLeft,
@@ -132,7 +134,7 @@ class _TvHomeState extends State<TvHome> {
       ),
       MenuTile(
         icon: Icons.local_movies,
-        label: "Series",
+        label: tr("Series"),
         color: const LinearGradient(
           colors: [Colors.purple, Colors.deepPurple],
           begin: Alignment.topLeft,
@@ -153,7 +155,7 @@ class _TvHomeState extends State<TvHome> {
       MenuTile(
         autofocus: true,
         icon: Icons.live_tv,
-        label: "Live TV",
+        label: tr("Live TV"),
         color: const LinearGradient(
           colors: [Colors.red, Colors.deepOrange],
           begin: Alignment.topLeft,
@@ -162,8 +164,18 @@ class _TvHomeState extends State<TvHome> {
         onTap: () => navPage(const TvLiveFolders()),
       ),
       MenuTile(
+        icon: Icons.search,
+        label: tr("Search"),
+        color: LinearGradient(
+          colors: [Colors.cyan.shade800, Colors.cyan.shade400],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        onTap: () => navPage(const TvSearchView()),
+      ),
+      MenuTile(
         icon: Icons.tv,
-        label: "Channels",
+        label: tr("Channels"),
         color: const LinearGradient(
           colors: [Colors.blueGrey, Colors.blue],
           begin: Alignment.topLeft,
@@ -173,7 +185,7 @@ class _TvHomeState extends State<TvHome> {
       ),
       MenuTile(
         icon: Icons.dashboard,
-        label: "Categories",
+        label: tr("Categories"),
         color: const LinearGradient(
           colors: [Colors.purple, Colors.deepPurple],
           begin: Alignment.topLeft,
@@ -183,7 +195,7 @@ class _TvHomeState extends State<TvHome> {
       ),
       MenuTile(
         icon: Icons.star,
-        label: "Favorites",
+        label: tr("Favorites"),
         color: LinearGradient(
           colors: [Colors.orange.shade700, Colors.amber.shade400],
           begin: Alignment.topLeft,
@@ -195,7 +207,7 @@ class _TvHomeState extends State<TvHome> {
       ),
       MenuTile(
         icon: Icons.history,
-        label: "History",
+        label: tr("History"),
         color: LinearGradient(
           colors: [Colors.teal.shade700, Colors.green.shade400],
           begin: Alignment.topLeft,
@@ -205,7 +217,7 @@ class _TvHomeState extends State<TvHome> {
       ),
       MenuTile(
         icon: Icons.download_for_offline,
-        label: "Downloads",
+        label: tr("Downloads"),
         color: LinearGradient(
           colors: [Colors.indigo.shade700, Colors.lightBlue.shade400],
           begin: Alignment.topLeft,
@@ -215,7 +227,7 @@ class _TvHomeState extends State<TvHome> {
       ),
       MenuTile(
         icon: Icons.settings,
-        label: "Settings",
+        label: tr("Settings"),
         color: LinearGradient(
           colors: [Colors.blueGrey.shade800, Colors.blueGrey.shade600],
           begin: Alignment.topLeft,

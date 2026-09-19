@@ -53,6 +53,8 @@ class ExoPlayerView(
     private val url = params["url"] as String
     private val startPositionMs = (params["startPositionMs"] as? Number)?.toLong() ?: 0L
     private val title = params["title"] as? String ?: ""
+    // Language chosen inside the app ("en" or "es"), not the system locale.
+    private val spanish = params["language"] == "es"
     private val debug = (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
     private val methodChannel = MethodChannel(messenger, "io.github.jaimegarmun.haimtv/exoplayer_$viewId")
@@ -166,7 +168,12 @@ class ExoPlayerView(
         }
         playerView.findViewById<View>(R.id.audio_button).setOnClickListener { showAudioTrackDialog() }
         playerView.findViewById<View>(R.id.zoom_button).setOnClickListener { toggleZoom() }
+        playerView.findViewById<View>(R.id.back_button).contentDescription = t("Back", "Atrás")
+        playerView.findViewById<View>(R.id.audio_button).contentDescription = t("Audio track", "Pista de audio")
+        playerView.findViewById<View>(R.id.zoom_button).contentDescription = t("Aspect ratio", "Relación de aspecto")
     }
+
+    private fun t(english: String, spanishText: String): String = if (spanish) spanishText else english
 
     /**
      * Double tap on the left/right third of the screen seeks -/+10 s.
@@ -343,7 +350,7 @@ class ExoPlayerView(
         val groups = activePlayer.currentTracks.groups.filter { it.type == C.TRACK_TYPE_AUDIO }
         if (groups.isEmpty()) return
 
-        val labels = mutableListOf("Auto")
+        val labels = mutableListOf(t("Auto", "Automático"))
         val overrides = mutableListOf<TrackSelectionOverride?>(null)
         for (group in groups) {
             for (i in 0 until group.length) {
@@ -355,7 +362,7 @@ class ExoPlayerView(
         }
 
         AlertDialog.Builder(playerView.context, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle(R.string.exo_audio)
+            .setTitle(t("Audio track", "Pista de audio"))
             .setItems(labels.toTypedArray()) { dialog, which ->
                 val params = activePlayer.trackSelectionParameters.buildUpon()
                     .clearOverridesOfType(C.TRACK_TYPE_AUDIO)
@@ -371,16 +378,16 @@ class ExoPlayerView(
         format.label?.let { return it }
         val lang = format.language
         if (!lang.isNullOrEmpty() && lang != "und") {
-            val display = Locale(lang).displayLanguage
+            val display = Locale(lang).getDisplayLanguage(Locale(if (spanish) "es" else "en"))
             return if (display.isNotEmpty()) display else lang
         }
         return when (format.channelCount) {
             1 -> "Mono"
-            2 -> "Stereo"
+            2 -> t("Stereo", "Estéreo")
             6 -> "5.1"
             8 -> "7.1"
             Format.NO_VALUE -> "Audio $fallbackIndex"
-            else -> "${format.channelCount} channels"
+            else -> t("${format.channelCount} channels", "${format.channelCount} canales")
         }
     }
 

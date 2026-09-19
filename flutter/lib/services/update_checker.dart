@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:open_tv/services/json_file.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:open_tv/l10n/l10n.dart';
 
 const githubRepo = "jaimegarmun/Haim-TV-IPTV";
 
@@ -161,7 +162,9 @@ class UpdateChecker {
       request.headers.set(HttpHeaders.userAgentHeader, "HaimTV");
       final response = await request.close();
       if (response.statusCode != 200) {
-        throw HttpException("Download failed (HTTP ${response.statusCode})");
+        throw HttpException(
+          tr("Download failed (HTTP {code})", {"code": response.statusCode}),
+        );
       }
       final total = response.contentLength;
       var received = 0;

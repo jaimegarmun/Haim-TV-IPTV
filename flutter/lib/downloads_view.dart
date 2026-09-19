@@ -6,6 +6,7 @@ import 'package:open_tv/side_margins.dart';
 import 'package:open_tv/confirm_delete.dart';
 import 'package:open_tv/exo_player.dart';
 import 'package:open_tv/held_key_guard.dart';
+import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/native_bridge.dart';
 import 'package:open_tv/player.dart';
 import 'package:open_tv/services/download_manager.dart';
@@ -20,7 +21,7 @@ class DownloadsView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Downloads"),
+        title: Text(tr("Downloads")),
         automaticallyImplyLeading: showBackArrow(tvMode),
       ),
       body: SafeArea(
@@ -39,7 +40,9 @@ class DownloadsView extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Text(
-                      "No downloads yet.\nHold a movie or episode (or long-press it) and choose \"Download\".",
+                      tr(
+                        "No downloads yet.\nHold a movie or episode (or long-press it) and choose \"Download\".",
+                      ),
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
@@ -61,7 +64,7 @@ class DownloadsView extends StatelessWidget {
     final movies = items.where((i) => !i.isEpisode).toList();
     final bySeries = <String, List<DownloadItem>>{};
     for (final item in items.where((i) => i.isEpisode)) {
-      bySeries.putIfAbsent(item.seriesName ?? "Series", () => []).add(item);
+      bySeries.putIfAbsent(item.seriesName ?? tr("Series"), () => []).add(item);
     }
     var first = true;
     Widget tile(DownloadItem item) {
@@ -72,7 +75,7 @@ class DownloadsView extends StatelessWidget {
 
     return [
       if (movies.isNotEmpty) ...[
-        _header(context, "Movies"),
+        _header(context, tr("Movies")),
         for (final item in movies) tile(item),
       ],
       for (final entry in bySeries.entries) ...[
@@ -125,20 +128,23 @@ class _DownloadTile extends StatelessWidget {
         final resume = WatchProgressStore.instance.resumePosition(item.url);
         return [
           formatBytes(item.totalBytes),
-          if (watched) "Watched",
-          if (resume != null) "Resume at ${formatSeconds(resume)}",
+          if (watched) tr("Watched"),
+          if (resume != null)
+            tr("Resume at {time}", {"time": formatSeconds(resume)}),
         ].join(" · ");
       case DownloadStatus.downloading:
         final pct = item.fraction != null
             ? " (${(item.fraction! * 100).toStringAsFixed(0)}%)"
             : "";
-        return "Downloading $size$pct";
+        return tr("Downloading {size}", {"size": "$size$pct"});
       case DownloadStatus.queued:
-        return "Waiting...";
+        return tr("Waiting...");
       case DownloadStatus.paused:
-        return "Paused · $size";
+        return tr("Paused · {size}", {"size": size});
       case DownloadStatus.failed:
-        return "Failed: ${item.error ?? "unknown error"}";
+        return tr("Failed: {error}", {
+          "error": item.error ?? tr("unknown error"),
+        });
     }
   }
 
@@ -177,21 +183,25 @@ class _DownloadTile extends StatelessWidget {
     final manager = DownloadManager.instance;
     final actions = <(IconData, String, VoidCallback)>[
       if (item.status == DownloadStatus.completed)
-        (Icons.play_arrow, "Play", () => _play(context)),
+        (Icons.play_arrow, tr("Play"), () => _play(context)),
       if (item.status == DownloadStatus.downloading ||
           item.status == DownloadStatus.queued)
-        (Icons.pause, "Pause", () => manager.pause(item.url)),
+        (Icons.pause, tr("Pause"), () => manager.pause(item.url)),
       if (item.status == DownloadStatus.paused ||
           item.status == DownloadStatus.failed)
-        (Icons.play_arrow, "Resume download", () => manager.resume(item.url)),
+        (
+          Icons.play_arrow,
+          tr("Resume download"),
+          () => manager.resume(item.url),
+        ),
       if (item.status == DownloadStatus.completed)
         (
           WatchProgressStore.instance.isWatched(item.url)
               ? Icons.remove_done
               : Icons.check_circle,
           WatchProgressStore.instance.isWatched(item.url)
-              ? "Mark as unwatched"
-              : "Mark as watched",
+              ? tr("Mark as unwatched")
+              : tr("Mark as watched"),
           () => WatchProgressStore.instance.setWatched(
             item.url,
             item.name,
@@ -200,7 +210,7 @@ class _DownloadTile extends StatelessWidget {
         ),
       (
         Icons.delete,
-        "Delete",
+        tr("Delete"),
         () => showDialog(
           context: context,
           builder: (_) => ConfirmDelete(

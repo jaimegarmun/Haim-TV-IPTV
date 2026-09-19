@@ -6,6 +6,7 @@ import 'package:open_tv/channel_grid_view.dart';
 import 'package:open_tv/error.dart';
 import 'package:open_tv/folder_tile.dart';
 import 'package:open_tv/home.dart';
+import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/models/channel.dart';
 import 'package:open_tv/models/filters.dart';
 import 'package:open_tv/models/home_manager.dart';
@@ -205,7 +206,7 @@ class _TvLiveFoldersState extends State<TvLiveFolders> {
   Widget build(BuildContext context) {
     final index = this.index;
     return Scaffold(
-      appBar: tvBackAppBar(context, title: "Live TV"),
+      appBar: tvBackAppBar(context, title: tr("Live TV")),
       body: SafeArea(
         minimum: sideMarginInsets(context),
         child: SingleChildScrollView(
@@ -214,23 +215,23 @@ class _TvLiveFoldersState extends State<TvLiveFolders> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               FolderSection(
-                title: "Live TV",
+                title: tr("Live TV"),
                 children: [
                   FolderTile(
                     autofocus: true,
-                    title: "All channels",
+                    title: tr("All channels"),
                     icon: Icons.live_tv,
                     color: Colors.blue.shade700,
                     onTap: () => _openHome(ViewType.all),
                   ),
                   FolderTile(
-                    title: "All categories",
+                    title: tr("All categories"),
                     icon: Icons.dashboard,
                     color: Colors.deepPurple,
                     onTap: () => _openHome(ViewType.categories),
                   ),
                   FolderTile(
-                    title: "Rescan folders",
+                    title: tr("Rescan folders"),
                     icon: Icons.refresh,
                     color: Colors.blueGrey.shade700,
                     onTap: () => _load(force: true),
@@ -255,7 +256,7 @@ class _TvLiveFoldersState extends State<TvLiveFolders> {
   List<Widget> _buildBrandSection(_LiveIndex index) {
     return [
       FolderSection(
-        title: "Networks",
+        title: tr("Networks"),
         children: [
           for (final brand in index.brandsFound)
             FolderTile(
@@ -267,17 +268,17 @@ class _TvLiveFoldersState extends State<TvLiveFolders> {
         ],
       ),
       if (!index.brandsDone)
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
           child: Row(
             children: [
-              SizedBox(
+              const SizedBox(
                 width: 16,
                 height: 16,
                 child: CircularProgressIndicator(strokeWidth: 2),
               ),
-              SizedBox(width: 10),
-              Text("Looking for networks..."),
+              const SizedBox(width: 10),
+              Text(tr("Looking for networks...")),
             ],
           ),
         ),
@@ -295,14 +296,16 @@ class _TvLiveFoldersState extends State<TvLiveFolders> {
       if (entries.isEmpty) continue;
       sections.add(
         FolderSection(
-          title: region.label,
+          title: tr(region.label),
           children: [
             for (final entry in entries)
               FolderTile(
                 title: entry.key.name,
-                subtitle: entry.value.length == 1
-                    ? "1 category"
-                    : "${entry.value.length} categories",
+                subtitle: trPlural(
+                  entry.value.length,
+                  "1 category",
+                  "{count} categories",
+                ),
                 emoji: entry.key.flag,
                 color: _regionColor(region),
                 onTap: () => _openGroups(entry.key.name, entry.value),
@@ -314,14 +317,21 @@ class _TvLiveFoldersState extends State<TvLiveFolders> {
     if (index.otherGroups.isNotEmpty) {
       sections.add(
         FolderSection(
-          title: "Other",
+          title: tr("Other"),
           children: [
             FolderTile(
-              title: "Other categories",
-              subtitle: "${index.otherGroups.length} categories",
+              title: tr("Other categories"),
+              subtitle: trPlural(
+                index.otherGroups.length,
+                "1 category",
+                "{count} categories",
+              ),
               icon: Icons.folder,
               color: Colors.grey.shade700,
-              onTap: () => _openGroups("Other categories", index.otherGroups),
+              onTap: () => _openGroups(
+                tr("Other categories"),
+                index.otherGroups,
+              ),
             ),
           ],
         ),

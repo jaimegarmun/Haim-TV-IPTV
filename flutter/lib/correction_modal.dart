@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:open_tv/l10n/l10n.dart';
 
 class CorrectionModal extends StatelessWidget {
   const CorrectionModal({super.key});
@@ -6,21 +7,21 @@ class CorrectionModal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text("Is this the right URL?"),
+      title: Text(tr("Is this the right URL?")),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context, false),
-          child: const Text("Proceed anyway"),
+          child: Text(tr("Proceed anyway")),
         ),
         TextButton(
           autofocus: true,
           onPressed: () => Navigator.pop(context, true),
-          child: const Text("Correct URL automatically"),
+          child: Text(tr("Correct URL automatically")),
         ),
       ],
-      content: const Text(
+      content: Text(tr(
         "It seems your url is not pointing to an Xtream API server, Haim TV can correct the URL automatically for you",
-      ),
+      )),
     );
   }
 }

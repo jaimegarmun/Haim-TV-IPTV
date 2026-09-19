@@ -20,6 +20,7 @@ import 'package:open_tv/memory.dart';
 import 'package:open_tv/player_osd.dart';
 import 'package:open_tv/services/download_manager.dart';
 import 'package:open_tv/services/watch_progress.dart';
+import 'package:open_tv/l10n/l10n.dart';
 
 class Player extends StatefulWidget {
   final Channel channel;
@@ -191,7 +192,7 @@ class _PlayerState extends State<Player> {
       context: context,
       barrierDismissible: true,
       builder: (context) => SelectDialog(
-        title: "Select subtitles",
+        title: tr("Select subtitles"),
         action: (id) async {
           player.setSubtitleTrack(player.state.tracks.subtitle[id]);
           Navigator.of(context).pop();
@@ -217,7 +218,7 @@ class _PlayerState extends State<Player> {
       context: context,
       barrierDismissible: true,
       builder: (context) => SelectDialog(
-        title: "Select audio",
+        title: tr("Select audio"),
         action: (id) async {
           player.setAudioTrack(player.state.tracks.audio[id]);
           Navigator.of(context).pop();
@@ -352,7 +353,7 @@ class _PlayerState extends State<Player> {
     player.playOrPause();
     osd.value = OsdEvent(
       player.state.playing ? Icons.pause : Icons.play_arrow,
-      player.state.playing ? "Pause" : "Play",
+      player.state.playing ? tr("Pause") : tr("Play"),
       Alignment.center,
     );
   }

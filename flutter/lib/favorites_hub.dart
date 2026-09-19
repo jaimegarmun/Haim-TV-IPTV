@@ -6,6 +6,7 @@ import 'package:open_tv/channel_grid_view.dart';
 import 'package:open_tv/confirm_delete.dart';
 import 'package:open_tv/folder_tile.dart';
 import 'package:open_tv/held_key_guard.dart';
+import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/services/favorite_folders.dart';
 
 /// Opens the channels of a user folder.
@@ -42,12 +43,12 @@ Future<void> showFolderOptions(
         ListTile(
           autofocus: true,
           leading: const Icon(Icons.edit),
-          title: const Text("Rename"),
+          title: Text(tr("Rename")),
           onTap: () => Navigator.of(context).pop(0),
         ),
         ListTile(
           leading: const Icon(Icons.delete),
-          title: const Text("Delete folder"),
+          title: Text(tr("Delete folder")),
           onTap: () => Navigator.of(context).pop(1),
         ),
       ],
@@ -57,7 +58,7 @@ Future<void> showFolderOptions(
   if (choice == 0) {
     final name = await askFolderName(
       context,
-      title: "Rename folder",
+      title: tr("Rename folder"),
       initial: folder.name,
     );
     if (name != null) await store.rename(folder.id, name);
@@ -129,7 +130,7 @@ class FavoriteFolderCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      folder?.name ?? "New folder",
+                      folder?.name ?? tr("New folder"),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -139,7 +140,7 @@ class FavoriteFolderCard extends StatelessWidget {
                     ),
                     if (folder != null)
                       Text(
-                        count == 1 ? "1 item" : "$count items",
+                        trPlural(count, "1 item", "{count} items"),
                         style: theme.textTheme.bodySmall,
                       ),
                   ],
@@ -177,7 +178,7 @@ class FavoritesHub extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: tvBackAppBar(context, title: "Favorites"),
+      appBar: tvBackAppBar(context, title: tr("Favorites")),
       body: SafeArea(
         minimum: sideMarginInsets(context),
         child: ListenableBuilder(
@@ -190,17 +191,17 @@ class FavoritesHub extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   FolderSection(
-                    title: "Favorites",
+                    title: tr("Favorites"),
                     children: [
                       FolderTile(
                         autofocus: true,
-                        title: "All favorites",
+                        title: tr("All favorites"),
                         icon: Icons.star,
                         color: Colors.orange.shade700,
                         onTap: openAllFavorites,
                       ),
                       FolderTile(
-                        title: "New folder",
+                        title: tr("New folder"),
                         icon: Icons.create_new_folder,
                         color: Colors.blueGrey.shade700,
                         onTap: () => createFavoriteFolder(context),
@@ -208,14 +209,16 @@ class FavoritesHub extends StatelessWidget {
                     ],
                   ),
                   FolderSection(
-                    title: "My folders",
+                    title: tr("My folders"),
                     children: [
                       for (final (index, folder) in folders.indexed)
                         FolderTile(
                           title: folder.name,
-                          subtitle: folder.items.length == 1
-                              ? "1 item"
-                              : "${folder.items.length} items",
+                          subtitle: trPlural(
+                            folder.items.length,
+                            "1 item",
+                            "{count} items",
+                          ),
                           icon: Icons.folder,
                           color: _folderColors[index % _folderColors.length],
                           onTap: () =>
@@ -225,17 +228,19 @@ class FavoritesHub extends StatelessWidget {
                     ],
                   ),
                   if (folders.isEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(16),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
                       child: Text(
-                        "Create a folder, then hold select on any channel and choose \"Add to folder...\".",
+                        tr(
+                          "Create a folder, then hold select on any channel and choose \"Add to folder...\".",
+                        ),
                       ),
                     ),
                   if (folders.isNotEmpty)
-                    const Padding(
-                      padding: EdgeInsets.all(16),
+                    Padding(
+                      padding: const EdgeInsets.all(16),
                       child: Text(
-                        "Hold select on a folder to rename or delete it.",
+                        tr("Hold select on a folder to rename or delete it."),
                       ),
                     ),
                 ],

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:open_tv/models/channel.dart';
+import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/models/media_type.dart';
 import 'package:open_tv/native_bridge.dart';
 import 'package:open_tv/services/json_file.dart';
@@ -186,7 +187,7 @@ class DownloadManager extends ChangeNotifier {
         await probe.delete();
       } on FileSystemException catch (e) {
         throw FileSystemException(
-          "Haim TV can't save files in this folder. Choose another one.",
+          tr("Haim TV can't save files in this folder. Choose another one."),
           path,
           e.osError,
         );
@@ -444,7 +445,9 @@ class DownloadManager extends ChangeNotifier {
       final append = response.statusCode == HttpStatus.partialContent;
       if (!append && response.statusCode != HttpStatus.ok) {
         await response.drain<void>();
-        throw HttpException("Server answered HTTP ${response.statusCode}");
+        throw HttpException(
+          tr("Server answered HTTP {code}", {"code": response.statusCode}),
+        );
       }
       if (!append) existing = 0;
       item.receivedBytes = existing;
@@ -469,7 +472,7 @@ class DownloadManager extends ChangeNotifier {
       }
       if (!_isActive(item)) throw _Cancelled();
       if (item.totalBytes > 0 && item.receivedBytes < item.totalBytes) {
-        throw const HttpException("Connection closed before the end");
+        throw HttpException(tr("Connection closed before the end"));
       }
       await _finish(item, part);
     } catch (e) {

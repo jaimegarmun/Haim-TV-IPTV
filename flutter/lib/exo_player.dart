@@ -13,6 +13,7 @@ import 'package:open_tv/models/settings.dart';
 import 'package:open_tv/native_bridge.dart';
 import 'package:open_tv/services/download_manager.dart';
 import 'package:open_tv/services/watch_progress.dart';
+import 'package:open_tv/l10n/l10n.dart';
 
 class ExoPlayerScreen extends StatefulWidget {
   final Channel channel;
@@ -77,6 +78,7 @@ class _ExoPlayerScreenState extends State<ExoPlayerScreen> {
         "referer": headers?.referrer,
         "origin": headers?.httpOrigin,
         "userAgent": headers?.userAgent,
+        "language": L10n.instance.code,
       };
       _ready = true;
     });

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:open_tv/models/view_type.dart';
+import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/settings_view.dart';
 
 class BottomNav extends StatefulWidget {
@@ -38,8 +39,8 @@ class _BottomNavState extends State<BottomNav> {
   void onBarTapped(int index) {
     if (widget.blockSettings && index == ViewType.settings.index) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Settings disabled while refreshing on start"),
+        SnackBar(
+          content: Text(tr("Settings disabled while refreshing on start")),
         ),
       );
       return;
@@ -78,15 +79,15 @@ class _BottomNavState extends State<BottomNav> {
         ),
       ),
       child: NavigationBar(
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.list), label: 'All'),
+        destinations: [
+          NavigationDestination(icon: const Icon(Icons.list), label: tr('All')),
           NavigationDestination(
-            icon: Icon(Icons.dashboard),
-            label: 'Categories',
+            icon: const Icon(Icons.dashboard),
+            label: tr('Categories'),
           ),
-          NavigationDestination(icon: Icon(Icons.star), label: 'Favorites'),
-          NavigationDestination(icon: Icon(Icons.history), label: "History"),
-          NavigationDestination(icon: Icon(Icons.settings), label: 'Settings'),
+          NavigationDestination(icon: const Icon(Icons.star), label: tr('Favorites')),
+          NavigationDestination(icon: const Icon(Icons.history), label: tr('History')),
+          NavigationDestination(icon: const Icon(Icons.settings), label: tr('Settings')),
         ],
         selectedIndex: _selectedIndex,
         onDestinationSelected: onBarTapped,

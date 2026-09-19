@@ -11,6 +11,7 @@ import 'package:open_tv/downloads_view.dart';
 import 'package:open_tv/favorites_hub.dart';
 import 'package:open_tv/services/favorite_folders.dart';
 import 'package:open_tv/services/source_names.dart';
+import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/loading.dart';
 import 'package:open_tv/models/channel.dart';
 import 'package:open_tv/models/filters.dart';
@@ -22,6 +23,7 @@ import 'package:open_tv/models/node.dart';
 import 'package:open_tv/models/node_type.dart';
 import 'package:open_tv/models/sort_type.dart';
 import 'package:open_tv/models/view_type.dart';
+import 'package:open_tv/qwerty_keyboard.dart';
 import 'package:open_tv/select_dialog.dart';
 import 'package:open_tv/update_dialog.dart';
 import 'package:open_tv/error.dart';
@@ -120,7 +122,7 @@ class _HomeState extends State<Home> {
         },
         context,
         true,
-        "Refreshed all sources",
+        tr("Refreshed all sources"),
       );
       setState(() {
         blockSettings = false;
@@ -133,7 +135,7 @@ class _HomeState extends State<Home> {
       barrierDismissible: true,
       context: context,
       builder: (context) => SelectDialog(
-        title: "Sort by",
+        title: tr("Sort by"),
         data: SortType.values
             .map((x) => IdData(id: x.index, data: sortTypeToString(x)))
             .toList(),
@@ -180,7 +182,7 @@ class _HomeState extends State<Home> {
           for (final (type, icon, label) in types)
             FilterChip(
               avatar: Icon(icon, size: 18),
-              label: Text(label),
+              label: Text(tr(label)),
               selected: selected.contains(type),
               showCheckmark: false,
               onSelected: (_) => toggleMediaType(type),
@@ -275,6 +277,18 @@ class _HomeState extends State<Home> {
     }
   }
 
+  Future<void> _openTvKeyboard() async {
+    final query = await showKeyboardInput(
+      context,
+      initial: searchController.text,
+    );
+    if (query == null || !mounted) return;
+    searchController.text = query;
+    widget.home.filters.query = query;
+    await load(false);
+    if (mounted) _focusChannelsBelow();
+  }
+
   void clearSearch() {
     widget.home.filters.query = null;
     searchController.clear();
@@ -298,6 +312,13 @@ class _HomeState extends State<Home> {
     }
     if (event is RawKeyDownEvent) {
       final key = event.logicalKey;
+      if (widget.tvMode &&
+          (key == LogicalKeyboardKey.select ||
+              key == LogicalKeyboardKey.enter ||
+              key == LogicalKeyboardKey.numpadEnter)) {
+        if (!event.repeat) _openTvKeyboard();
+        return KeyEventResult.handled;
+      }
       if (key == LogicalKeyboardKey.escape ||
           key == LogicalKeyboardKey.goBack) {
         bool moved = FocusScope.of(
@@ -459,6 +480,10 @@ class _HomeState extends State<Home> {
                             ).textTheme.titleMedium?.fontSize!,
                           ),
                           controller: searchController,
+                          // On TV the QWERTY keyboard replaces the system
+                          // one (often alphabetical on TVs).
+                          readOnly: widget.tvMode,
+                          onTap: widget.tvMode ? _openTvKeyboard : null,
                           textInputAction: TextInputAction.search,
                           onEditingComplete: _focusChannelsBelow,
                           onChanged: (query) {
@@ -472,7 +497,7 @@ class _HomeState extends State<Home> {
                             );
                           },
                           decoration: InputDecoration(
-                            hintText: "Search...",
+                            hintText: tr("Search..."),
                             hintStyle: TextStyle(
                               fontSize: Theme.of(
                                 context,
@@ -506,7 +531,7 @@ class _HomeState extends State<Home> {
                                 ),
                                 if (!widget.tvMode)
                                   IconButton(
-                                    tooltip: "Downloads",
+                                    tooltip: tr("Downloads"),
                                     onPressed: () => Navigator.of(context).push(
                                       MaterialPageRoute(
                                         builder: (_) => const DownloadsView(),
@@ -581,7 +606,7 @@ class _HomeState extends State<Home> {
                 child: FloatingActionButton(
                   onPressed: scrollToTop,
                   shape: const CircleBorder(),
-                  tooltip: 'Scroll to Top',
+                  tooltip: tr("Scroll to top"),
                   child: const Icon(Icons.arrow_upward),
                 ),
               ),

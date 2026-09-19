@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:open_tv/error.dart';
 import 'package:open_tv/held_key_guard.dart';
 import 'package:open_tv/home.dart';
+import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/memory.dart';
 import 'package:open_tv/models/channel.dart';
 import 'package:open_tv/models/filters.dart';
@@ -62,7 +63,7 @@ Future<void> _toggleFavorite(BuildContext context, Channel channel) async {
   if (context.mounted) {
     Error.showSuccess(
       context,
-      channel.favorite ? "Added to favorites" : "Removed from favorites",
+      channel.favorite ? tr("Added to favorites") : tr("Removed from favorites"),
     );
   }
 }
@@ -70,29 +71,29 @@ Future<void> _toggleFavorite(BuildContext context, Channel channel) async {
 /// Asks for a folder name. Returns null when cancelled.
 Future<String?> askFolderName(
   BuildContext context, {
-  String title = "New folder",
+  String? title,
   String initial = "",
 }) {
   final controller = TextEditingController(text: initial);
   return showDialog<String>(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text(title),
+      title: Text(title ?? tr("New folder")),
       content: TextField(
         controller: controller,
         autofocus: true,
         textCapitalization: TextCapitalization.sentences,
-        decoration: const InputDecoration(hintText: "Folder name"),
+        decoration: InputDecoration(hintText: tr("Folder name")),
         onSubmitted: (value) => Navigator.of(context).pop(value),
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text("Cancel"),
+          child: Text(tr("Cancel")),
         ),
         TextButton(
           onPressed: () => Navigator.of(context).pop(controller.text),
-          child: const Text("Save"),
+          child: Text(tr("Save")),
         ),
       ],
     ),
@@ -104,7 +105,7 @@ Future<void> _addToFolder(BuildContext context, Channel channel) async {
   final choice = await showDialog<String>(
     context: context,
     builder: (context) => SimpleDialog(
-      title: const Text("Add to folder"),
+      title: Text(tr("Add to folder")),
       children: [
         for (final (index, folder) in store.folders.indexed)
           ListTile(
@@ -120,7 +121,7 @@ Future<void> _addToFolder(BuildContext context, Channel channel) async {
         ListTile(
           autofocus: store.folders.isEmpty,
           leading: const Icon(Icons.create_new_folder),
-          title: const Text("New folder..."),
+          title: Text(tr("New folder...")),
           onTap: () => Navigator.of(context).pop(""),
         ),
       ],
@@ -142,7 +143,10 @@ Future<void> _addToFolder(BuildContext context, Channel channel) async {
     }, context);
   }
   if (context.mounted) {
-    Error.showSuccess(context, "Added to ${store.byId(folderId)?.name}");
+    Error.showSuccess(
+      context,
+      tr("Added to {folder}", {"folder": store.byId(folderId)?.name}),
+    );
   }
 }
 
@@ -156,7 +160,9 @@ Future<void> downloadEpisode(BuildContext context, Channel channel) async {
   if (context.mounted) {
     Error.showSuccess(
       context,
-      added ? "Download queued: ${channel.name}" : "Already in downloads",
+      added
+          ? tr("Download queued: {name}", {"name": channel.name})
+          : tr("Already in downloads"),
     );
   }
 }
@@ -203,7 +209,14 @@ Future<void> downloadSeason(BuildContext context, Channel season) async {
         sourceIds: sources,
       );
       if (context.mounted) {
-        Error.showSuccess(context, "$added episodes queued for download");
+        Error.showSuccess(
+          context,
+          trPlural(
+            added,
+            "1 episode queued for download",
+            "{count} episodes queued for download",
+          ),
+        );
       }
     },
     context,
@@ -243,7 +256,14 @@ Future<void> downloadSeries(BuildContext context, Channel series) async {
         );
       }
       if (context.mounted) {
-        Error.showSuccess(context, "$added episodes queued for download");
+        Error.showSuccess(
+          context,
+          trPlural(
+            added,
+            "1 episode queued for download",
+            "{count} episodes queued for download",
+          ),
+        );
       }
     },
     context,
@@ -273,29 +293,29 @@ Future<void> showChannelOptions(
     if (isPlayable && channel.id != null)
       (
         channel.favorite ? Icons.star_border : Icons.star,
-        channel.favorite ? "Remove from favorites" : "Add to favorites",
+        channel.favorite ? tr("Remove from favorites") : tr("Add to favorites"),
         () => _toggleFavorite(context, channel),
       ),
     if (isPlayable)
       (
         Icons.create_new_folder,
-        "Add to folder...",
+        tr("Add to folder..."),
         () => _addToFolder(context, channel),
       ),
     if (folderId != null)
       (
         Icons.folder_off,
-        "Remove from this folder",
+        tr("Remove from this folder"),
         () => FavoriteFoldersStore.instance.remove(folderId, channel),
       ),
     if (DownloadManager.canDownload(channel) && download == null)
-      (Icons.download, "Download", () => downloadEpisode(context, channel)),
+      (Icons.download, tr("Download"), () => downloadEpisode(context, channel)),
     if (download != null &&
         (download.status == DownloadStatus.downloading ||
             download.status == DownloadStatus.queued))
       (
         Icons.pause,
-        "Pause download",
+        tr("Pause download"),
         () => DownloadManager.instance.pause(download.url),
       ),
     if (download != null &&
@@ -303,31 +323,31 @@ Future<void> showChannelOptions(
             download.status == DownloadStatus.failed))
       (
         Icons.play_arrow,
-        "Resume download",
+        tr("Resume download"),
         () => DownloadManager.instance.resume(download.url),
       ),
     if (download != null)
       (
         Icons.delete,
-        "Delete download",
+        tr("Delete download"),
         () => DownloadManager.instance.remove(download.url),
       ),
     if (channel.mediaType == MediaType.serie)
       (
         Icons.download,
-        "Download entire series",
+        tr("Download entire series"),
         () => downloadSeries(context, channel),
       ),
     if (channel.mediaType == MediaType.season)
       (
         Icons.download,
-        "Download season",
+        tr("Download season"),
         () => downloadSeason(context, channel),
       ),
     if (channel.mediaType == MediaType.movie)
       (
         watched ? Icons.remove_done : Icons.check_circle,
-        watched ? "Mark as unwatched" : "Mark as watched",
+        watched ? tr("Mark as unwatched") : tr("Mark as watched"),
         () async => WatchProgressStore.instance.setWatched(
           channel.url,
           channel.name,

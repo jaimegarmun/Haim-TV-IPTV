@@ -14,6 +14,7 @@ import 'package:open_tv/models/source_type.dart';
 import 'package:open_tv/models/steps.dart';
 import 'package:open_tv/models/view_type.dart';
 import 'package:open_tv/error.dart';
+import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/native_bridge.dart';
 import 'package:open_tv/tv_home.dart';
 
@@ -341,9 +342,9 @@ class _SetupState extends State<Setup> {
                                     vertical: 16,
                                   ),
                                 ),
-                                child: const Text(
-                                  "Back",
-                                  style: TextStyle(fontSize: 18),
+                                child: Text(
+                                  tr("Back"),
+                                  style: const TextStyle(fontSize: 18),
                                 ),
                               ),
                             ),
@@ -365,10 +366,10 @@ class _SetupState extends State<Setup> {
                             child: Text(
                               step == Steps.name &&
                                       selectedSourceType == SourceType.m3u
-                                  ? "Select file"
+                                  ? tr("Select file")
                                   : step == Steps.finish
-                                  ? "Finish"
-                                  : "Next",
+                                  ? tr("Finish")
+                                  : tr("Next"),
                               style: const TextStyle(fontSize: 18),
                             ),
                           ),
@@ -389,13 +390,15 @@ class _SetupState extends State<Setup> {
     switch (step) {
       case Steps.welcome:
         return getPage(
-          "Welcome to Haim TV",
-          "Let's set up your ${widget.showAppBar ? "new" : "first"} source",
+          tr("Welcome to Haim TV"),
+          widget.showAppBar
+              ? tr("Let's set up your new source")
+              : tr("Let's set up your first source"),
           null,
         );
       case Steps.sourceType:
         return getPage(
-          "What is your provider type?",
+          tr("What is your provider type?"),
           null,
           List.generate(SourceType.values.length, (i) {
             final isLast = i == SourceType.values.length - 1;
@@ -435,7 +438,7 @@ class _SetupState extends State<Setup> {
           }),
         );
       case Steps.name:
-        return getPage("What should we name this source?", null, [
+        return getPage(tr("What should we name this source?"), null, [
           FormBuilder(
             onChanged: () {
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -450,22 +453,24 @@ class _SetupState extends State<Setup> {
             child: FormBuilderTextField(
               autocorrect: false,
               focusNode: focusNodes[Steps.name],
-              decoration: const InputDecoration(
-                labelText: "Name",
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.label_outline),
+              decoration: InputDecoration(
+                labelText: tr("Name"),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.label_outline),
               ),
               textInputAction: TextInputAction.next,
               autovalidateMode: AutovalidateMode.onUserInteraction,
               validator: FormBuilderValidators.compose([
-                FormBuilderValidators.required(),
+                FormBuilderValidators.required(
+                  errorText: tr("This field cannot be empty."),
+                ),
                 (value) {
                   var trimmed = value?.trim();
                   if (trimmed == null || trimmed.isEmpty) {
                     return null;
                   }
                   if (existingSourceNames.contains(trimmed)) {
-                    return "Name already exists";
+                    return tr("Name already exists");
                   }
                   return null;
                 },
@@ -475,7 +480,7 @@ class _SetupState extends State<Setup> {
           ),
         ]);
       case Steps.url:
-        return getPage("What is your provider's URL?", null, [
+        return getPage(tr("What is your provider's URL?"), null, [
           FormBuilder(
             onChanged: () {
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -490,20 +495,22 @@ class _SetupState extends State<Setup> {
             child: FormBuilderTextField(
               autocorrect: false,
               focusNode: focusNodes[Steps.url],
-              decoration: const InputDecoration(
-                labelText: "URL",
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.link),
+              decoration: InputDecoration(
+                labelText: tr("URL"),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.link),
               ),
               textInputAction: TextInputAction.next,
               autovalidateMode: AutovalidateMode.onUserInteraction,
-              validator: FormBuilderValidators.required(),
+              validator: FormBuilderValidators.required(
+                errorText: tr("This field cannot be empty."),
+              ),
               name: 'url',
             ),
           ),
         ]);
       case Steps.username:
-        return getPage("What is your username?", null, [
+        return getPage(tr("What is your username?"), null, [
           FormBuilder(
             onChanged: () {
               WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -518,20 +525,22 @@ class _SetupState extends State<Setup> {
             child: FormBuilderTextField(
               autocorrect: false,
               focusNode: focusNodes[Steps.username],
-              decoration: const InputDecoration(
-                labelText: "Username",
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.person),
+              decoration: InputDecoration(
+                labelText: tr("Username"),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.person),
               ),
               textInputAction: TextInputAction.next,
               autovalidateMode: AutovalidateMode.onUserInteraction,
-              validator: FormBuilderValidators.required(),
+              validator: FormBuilderValidators.required(
+                errorText: tr("This field cannot be empty."),
+              ),
               name: 'username',
             ),
           ),
         ]);
       case Steps.password:
-        return getPage("What is your password?", null, [
+        return getPage(tr("What is your password?"), null, [
           FormBuilder(
             initialValue: {Steps.password.name: formValues[Steps.password]},
             onChanged: () {
@@ -546,20 +555,22 @@ class _SetupState extends State<Setup> {
             child: FormBuilderTextField(
               autocorrect: false,
               focusNode: focusNodes[Steps.password],
-              decoration: const InputDecoration(
-                labelText: "Password",
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.password),
+              decoration: InputDecoration(
+                labelText: tr("Password"),
+                border: const OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.password),
               ),
               textInputAction: TextInputAction.next,
               autovalidateMode: AutovalidateMode.onUserInteraction,
-              validator: FormBuilderValidators.required(),
+              validator: FormBuilderValidators.required(
+                errorText: tr("This field cannot be empty."),
+              ),
               name: 'password',
             ),
           ),
         ]);
       case Steps.finish:
-        return getPage("Done!", "You're all set 🎉", null);
+        return getPage(tr("Done!"), tr("You're all set 🎉"), null);
     }
   }
 

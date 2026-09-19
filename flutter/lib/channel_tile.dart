@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:open_tv/channel_actions.dart';
+import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/memory.dart';
 import 'package:open_tv/models/channel.dart';
 import 'package:open_tv/services/download_manager.dart';
@@ -180,7 +181,7 @@ class _ChannelTileState extends State<ChannelTile> {
   Future<int?> _handleSeries() async {
     if (widget.channel.url?.isEmpty == true) {
       if (context.mounted) {
-        Error.handleError(context, "Invalid series: series ID is null");
+        Error.handleError(context, tr("Invalid series: series ID is null"));
       }
       return null;
     }
@@ -189,7 +190,7 @@ class _ChannelTileState extends State<ChannelTile> {
       if (context.mounted) {
         Error.handleError(
           context,
-          "Invalid series: series ID is not a valid number",
+          tr("Invalid series: series ID is not a valid number"),
         );
       }
       return null;
@@ -340,9 +341,9 @@ class _ChannelTileState extends State<ChannelTile> {
         final icons = <Widget>[
           if (download != null) _downloadIcon(download),
           if (watched)
-            const Tooltip(
-              message: "Watched",
-              child: Icon(Icons.check_circle, size: 25, color: Colors.green),
+            Tooltip(
+              message: tr("Watched"),
+              child: const Icon(Icons.check_circle, size: 25, color: Colors.green),
             ),
         ];
         if (icons.isEmpty) return const SizedBox.shrink();
@@ -360,9 +361,9 @@ class _ChannelTileState extends State<ChannelTile> {
   Widget _downloadIcon(DownloadItem download) {
     switch (download.status) {
       case DownloadStatus.completed:
-        return const Tooltip(
-          message: "Downloaded",
-          child: Icon(Icons.download_done, size: 22, color: Colors.lightBlue),
+        return Tooltip(
+          message: tr("Downloaded"),
+          child: const Icon(Icons.download_done, size: 22, color: Colors.lightBlue),
         );
       case DownloadStatus.downloading:
         return SizedBox(

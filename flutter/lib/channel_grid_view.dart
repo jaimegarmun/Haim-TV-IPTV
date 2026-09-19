@@ -4,6 +4,7 @@ import 'package:open_tv/side_margins.dart';
 import 'package:open_tv/channel_actions.dart';
 import 'package:open_tv/channel_tile.dart';
 import 'package:open_tv/error.dart';
+import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/loading.dart';
 import 'package:open_tv/models/channel.dart';
 
@@ -73,7 +74,7 @@ class _ChannelGridViewState extends State<ChannelGridView> {
         child: Focus(
           autofocus: true,
           child: Text(
-            widget.emptyMessage,
+            tr(widget.emptyMessage),
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),

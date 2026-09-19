@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:media_kit/media_kit.dart' as mk;
 import 'package:open_tv/services/watch_progress.dart';
+import 'package:open_tv/l10n/l10n.dart';
 
 /// How much of a live channel mpv keeps so it can be rewound. media_kit
 /// stores the demuxer cache on disk, so this does not use RAM.
@@ -159,7 +160,7 @@ class _LiveTimeshiftBarState extends State<LiveTimeshiftBar> {
             color: _atLiveEdge ? Colors.red : Colors.grey,
           ),
           label: Text(
-            "LIVE",
+            tr("LIVE"),
             style: TextStyle(
               color: _atLiveEdge ? Colors.white : Colors.white70,
               fontWeight: FontWeight.bold,

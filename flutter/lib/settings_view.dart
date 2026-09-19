@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:open_tv/back_navigation.dart';
 import 'package:open_tv/native_bridge.dart';
+import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/services/download_manager.dart';
 import 'package:open_tv/services/source_names.dart';
 import 'package:open_tv/services/update_checker.dart';
@@ -25,6 +26,7 @@ import 'package:open_tv/models/sort_type.dart';
 import 'package:open_tv/models/view_type.dart';
 import 'package:open_tv/error.dart';
 import 'package:open_tv/setup.dart';
+import 'package:open_tv/tv_home.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class SettingsView extends StatefulWidget {
@@ -64,13 +66,13 @@ class _SettingsState extends State<SettingsView> {
   Future<void> checkForUpdatesNow() async {
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text("Checking for updates...")));
+    ).showSnackBar(SnackBar(content: Text(tr("Checking for updates..."))));
     final release = await UpdateChecker.instance.checkNow();
     if (!mounted) return;
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
     if (release == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("You have the latest version")),
+        SnackBar(content: Text(tr("You have the latest version"))),
       );
       return;
     }
@@ -121,7 +123,7 @@ class _SettingsState extends State<SettingsView> {
       context: context,
       builder: (BuildContext context) {
         return SelectDialog(
-          title: "Default view",
+          title: tr("Default view"),
           data: ViewType.values
               .take(4)
               .map((x) => IdData(id: x.index, data: viewTypeToString(x)))
@@ -138,13 +140,70 @@ class _SettingsState extends State<SettingsView> {
     );
   }
 
+  static String _languageName(AppLanguage language) {
+    switch (language) {
+      case AppLanguage.system:
+        return tr("System language");
+      case AppLanguage.en:
+        return "English";
+      case AppLanguage.es:
+        return "Español";
+    }
+  }
+
+  Future<void> _showLanguageDialog(BuildContext context) async {
+    showDialog(
+      barrierDismissible: true,
+      context: context,
+      builder: (BuildContext context) {
+        return SelectDialog(
+          title: tr("Language"),
+          data: AppLanguage.values
+              .map((x) => IdData(id: x.index, data: _languageName(x)))
+              .toList(),
+          action: (index) async {
+            Navigator.of(context).pop();
+            final language = AppLanguage.values[index];
+            if (language == L10n.instance.language) return;
+            await L10n.instance.setLanguage(language);
+            if (mounted) _reopenInNewLanguage();
+          },
+        );
+      },
+    );
+  }
+
+  /// Rebuilds every screen so all texts use the new language, and comes
+  /// back to Settings.
+  void _reopenInNewLanguage() {
+    final navigator = Navigator.of(context);
+    if (widget.tvMode) {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const TvHome()),
+        (route) => false,
+      );
+      navigator.push(
+        MaterialPageRoute(builder: (_) => const SettingsView(tvMode: true)),
+      );
+    } else {
+      navigator.pushAndRemoveUntil(
+        PageRouteBuilder(
+          pageBuilder: (_, _, _) => const SettingsView(),
+          transitionDuration: Duration.zero,
+          reverseTransitionDuration: Duration.zero,
+        ),
+        (route) => false,
+      );
+    }
+  }
+
   Future<void> _showDefaultSortDialog(BuildContext context) async {
     showDialog(
       barrierDismissible: true,
       context: context,
       builder: (BuildContext context) {
         return SelectDialog(
-          title: "Default sort",
+          title: tr("Default sort"),
           data: SortType.values
               .map((x) => IdData(id: x.index, data: sortTypeToString(x)))
               .toList(),
@@ -172,7 +231,9 @@ class _SettingsState extends State<SettingsView> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text("Source ${!source.enabled ? "enabled" : "disabled"}"),
+        content: Text(
+          !source.enabled ? tr("Source enabled") : tr("Source disabled"),
+        ),
         duration: const Duration(milliseconds: 500),
       ),
     );
@@ -194,7 +255,9 @@ class _SettingsState extends State<SettingsView> {
         subtitle: Text(
           source.enabled
               ? source.sourceType.label
-              : "${source.sourceType.label} · Disabled (hidden, not deleted)",
+              : tr("{type} · Disabled (hidden, not deleted)", {
+                  "type": source.sourceType.label,
+                }),
         ),
         trailing: Row(
           mainAxisSize:
@@ -202,8 +265,8 @@ class _SettingsState extends State<SettingsView> {
           children: [
             Tooltip(
               message: source.enabled
-                  ? "Disable (hide its channels)"
-                  : "Enable",
+                  ? tr("Disable (hide its channels)")
+                  : tr("Enable"),
               child: Switch(
                 value: source.enabled,
                 onChanged: (_) => toggleSource(source),
@@ -219,7 +282,7 @@ class _SettingsState extends State<SettingsView> {
                       await NativeBridge.instance.refreshSource(source);
                     },
                     context,
-                    "Source has been refreshed successfully",
+                    tr("Source has been refreshed successfully"),
                   );
                 },
               ),
@@ -246,13 +309,13 @@ class _SettingsState extends State<SettingsView> {
       barrierDismissible: true,
       context: context,
       builder: (builder) => ConfirmDelete(
-        type: "source",
+        type: tr("the source"),
         name: source.name,
         confirm: () async {
           await Error.tryAsync(
             () async => await NativeBridge.instance.deleteSource(source.id!),
             context,
-            "Successfully deleted source",
+            tr("Successfully deleted source"),
           );
           await reloadSources();
           if (!mounted) return;
@@ -284,14 +347,14 @@ class _SettingsState extends State<SettingsView> {
   Future<void> _chooseDownloadFolder() async {
     final manager = DownloadManager.instance;
     final path = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: "Choose the download folder",
+      dialogTitle: tr("Choose the download folder"),
       initialDirectory: await manager.currentDirectory(),
     );
     if (path == null || !mounted) return;
     await Error.tryAsync(
       () => manager.setDirectory(path),
       context,
-      "New downloads will be saved in $path",
+      tr("New downloads will be saved in {path}", {"path": path}),
       false,
     );
   }
@@ -300,7 +363,7 @@ class _SettingsState extends State<SettingsView> {
     await Error.tryAsync(
       () => DownloadManager.instance.setDirectory(null),
       context,
-      "Downloads will be saved in the default folder",
+      tr("Downloads will be saved in the default folder"),
       false,
     );
   }
@@ -319,9 +382,9 @@ class _SettingsState extends State<SettingsView> {
         return FutureBuilder<String>(
           future: DownloadManager.instance.currentDirectory(),
           builder: (context, snapshot) => ListTile(
-            title: const Text("Download folder"),
+            title: Text(tr("Download folder")),
             subtitle: Text(
-              "${snapshot.data ?? "..."}${custom == null ? "  (default)" : ""}",
+              "${snapshot.data ?? "..."}${custom == null ? "  ${tr("(default)")}" : ""}",
             ),
             onTap: _chooseDownloadFolder,
             trailing: Row(
@@ -329,18 +392,18 @@ class _SettingsState extends State<SettingsView> {
               children: [
                 if (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
                   IconButton(
-                    tooltip: "Open folder",
+                    tooltip: tr("Open folder"),
                     icon: const Icon(Icons.folder_open),
                     onPressed: _openDownloadFolder,
                   ),
                 IconButton(
-                  tooltip: "Change folder",
+                  tooltip: tr("Change folder"),
                   icon: const Icon(Icons.edit),
                   onPressed: _chooseDownloadFolder,
                 ),
                 if (custom != null)
                   IconButton(
-                    tooltip: "Use the default folder",
+                    tooltip: tr("Use the default folder"),
                     icon: const Icon(Icons.restore),
                     onPressed: _resetDownloadFolder,
                   ),
@@ -373,10 +436,10 @@ class _SettingsState extends State<SettingsView> {
               child: ListView(
                 children: [
                   const SizedBox(height: 10),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 10),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10),
                     child: Text(
-                      'Settings',
+                      tr("Settings"),
                       style: TextStyle(
                         fontSize: 30,
                         fontWeight: FontWeight.bold,
@@ -385,17 +448,23 @@ class _SettingsState extends State<SettingsView> {
                   ),
                   const SizedBox(height: 10),
                   ListTile(
-                    title: const Text("Default view"),
+                    leading: const Icon(Icons.language),
+                    title: Text(tr("Language")),
+                    subtitle: Text(_languageName(L10n.instance.language)),
+                    onTap: () => _showLanguageDialog(context),
+                  ),
+                  ListTile(
+                    title: Text(tr("Default view")),
                     subtitle: Text(viewTypeToString(settings.defaultView)),
                     onTap: () async => await _showDefaultViewDialog(context),
                   ),
                   ListTile(
-                    title: const Text("Default sort"),
+                    title: Text(tr("Default sort")),
                     subtitle: Text(sortTypeToString(settings.defaultSort)),
                     onTap: () async => await _showDefaultSortDialog(context),
                   ),
                   ListTile(
-                    title: const Text("Force TV Mode"),
+                    title: Text(tr("Force TV Mode")),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -412,7 +481,7 @@ class _SettingsState extends State<SettingsView> {
                     ),
                   ),
                   ListTile(
-                    title: const Text("Low latency livestreams"),
+                    title: Text(tr("Low latency livestreams")),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -429,7 +498,7 @@ class _SettingsState extends State<SettingsView> {
                     ),
                   ),
                   ListTile(
-                    title: const Text("Refresh sources on start"),
+                    title: Text(tr("Refresh sources on start")),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -446,7 +515,7 @@ class _SettingsState extends State<SettingsView> {
                     ),
                   ),
                   ListTile(
-                    title: const Text("Show livestreams"),
+                    title: Text(tr("Show livestreams")),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -463,7 +532,7 @@ class _SettingsState extends State<SettingsView> {
                     ),
                   ),
                   ListTile(
-                    title: const Text("Show movies"),
+                    title: Text(tr("Show movies")),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -480,7 +549,7 @@ class _SettingsState extends State<SettingsView> {
                     ),
                   ),
                   ListTile(
-                    title: const Text("Show series"),
+                    title: Text(tr("Show series")),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
@@ -497,10 +566,10 @@ class _SettingsState extends State<SettingsView> {
                     ),
                   ),
                   const Divider(),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 10),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10),
                     child: Text(
-                      'Updates',
+                      tr("Updates"),
                       style: TextStyle(
                         fontSize: 30,
                         fontWeight: FontWeight.bold,
@@ -508,7 +577,7 @@ class _SettingsState extends State<SettingsView> {
                     ),
                   ),
                   ListTile(
-                    title: const Text("Check for updates on start"),
+                    title: Text(tr("Check for updates on start")),
                     trailing: Switch(
                       value: checkUpdatesOnStart,
                       onChanged: (bool value) {
@@ -518,15 +587,15 @@ class _SettingsState extends State<SettingsView> {
                     ),
                   ),
                   ListTile(
-                    title: const Text("Check for updates now"),
+                    title: Text(tr("Check for updates now")),
                     trailing: const Icon(Icons.system_update),
                     onTap: checkForUpdatesNow,
                   ),
                   const Divider(),
-                  const Padding(
-                    padding: EdgeInsets.only(left: 10),
+                  Padding(
+                    padding: const EdgeInsets.only(left: 10),
                     child: Text(
-                      'Downloads',
+                      tr("Downloads"),
                       style: TextStyle(
                         fontSize: 30,
                         fontWeight: FontWeight.bold,
@@ -534,21 +603,23 @@ class _SettingsState extends State<SettingsView> {
                     ),
                   ),
                   _buildDownloadFolderTile(),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                     child: Text(
-                      "Only new downloads use the new folder; existing ones stay where they are.",
-                      style: TextStyle(color: Colors.grey),
+                      tr(
+                        "Only new downloads use the new folder; existing ones stay where they are.",
+                      ),
+                      style: const TextStyle(color: Colors.grey),
                     ),
                   ),
                   const Divider(),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Padding(
-                        padding: EdgeInsets.only(left: 10),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 10),
                         child: Text(
-                          'Sources',
+                          tr("Sources"),
                           style: TextStyle(
                             fontSize: 30,
                             fontWeight: FontWeight.bold,
@@ -562,7 +633,7 @@ class _SettingsState extends State<SettingsView> {
                               () async =>
                                   await NativeBridge.instance.refreshAll(),
                               context,
-                              "Successfully refreshed all sources",
+                              tr("Successfully refreshed all sources"),
                             ),
                             icon: const Icon(Icons.refresh),
                           ),

@@ -52,6 +52,8 @@ modules:
       - install -Dm644 io.github.jaimegarmun.haimtv.desktop /app/share/applications/io.github.jaimegarmun.haimtv.desktop
       - install -Dm644 io.github.jaimegarmun.haimtv.metainfo.xml /app/share/metainfo/io.github.jaimegarmun.haimtv.metainfo.xml
       - install -Dm644 flutter/assets/icon.png /app/share/icons/hicolor/512x512/apps/io.github.jaimegarmun.haimtv.png
+      # Smaller sizes too: taskbars and docks look up 48/64/128 px icons.
+      - for s in 16 24 32 48 64 128 256; do install -Dm644 flatpak/icons/${s}x${s}.png /app/share/icons/hicolor/${s}x${s}/apps/io.github.jaimegarmun.haimtv.png; done
     sources:
       - type: git
         url: https://github.com/jaimegarmun/Haim-TV-IPTV.git

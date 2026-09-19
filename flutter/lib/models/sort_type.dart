@@ -1,12 +1,14 @@
+import 'package:open_tv/l10n/l10n.dart';
+
 enum SortType { alphabeticalAsc, alphabeticalDesc, provider }
 
 String sortTypeToString(SortType sort) {
   switch (sort) {
     case SortType.alphabeticalAsc:
-      return "Alphabetical ASC";
+      return tr("Alphabetical ASC");
     case SortType.alphabeticalDesc:
-      return "Alphabetical DESC";
+      return tr("Alphabetical DESC");
     case SortType.provider:
-      return "Provider";
+      return tr("Provider");
   }
 }

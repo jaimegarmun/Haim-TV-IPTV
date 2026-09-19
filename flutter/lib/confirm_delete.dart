@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:open_tv/l10n/l10n.dart';
 
 class ConfirmDelete extends StatelessWidget {
   const ConfirmDelete(
@@ -13,12 +14,13 @@ class ConfirmDelete extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text("Confirm deletion"),
+      title: Text(tr("Confirm deletion")),
       content: Text.rich(TextSpan(children: [
-        TextSpan(text: "You are about to delete $type "),
+        TextSpan(
+            text: tr("You are about to delete {type} ", {"type": tr(type)})),
         TextSpan(
             text: name, style: const TextStyle(fontWeight: FontWeight.bold)),
-        const TextSpan(text: ", are you sure?"),
+        TextSpan(text: tr(", are you sure?")),
       ])),
       actions: [
         TextButton(
@@ -27,10 +29,10 @@ class ConfirmDelete extends StatelessWidget {
               Navigator.of(context).pop();
               confirm();
             },
-            child: const Text("Confirm")),
+            child: Text(tr("Confirm"))),
         TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text("Cancel"))
+            child: Text(tr("Cancel")))
       ],
     );
   }

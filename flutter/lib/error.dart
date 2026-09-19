@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:loader_overlay/loader_overlay.dart';
 import 'package:open_tv/models/result.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:open_tv/l10n/l10n.dart';
 
 class Error {
   static Future<void> handleError(BuildContext context, String error) async {
@@ -10,24 +11,24 @@ class Error {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
             backgroundColor: Colors.red[700],
-            content: const Text(
-              "An error occured. Click on 'Details' for more information",
-              style: TextStyle(color: Colors.white),
+            content: Text(
+              tr("An error occurred. Tap 'Details' for more information"),
+              style: const TextStyle(color: Colors.white),
             ),
             action: SnackBarAction(
-                label: 'Details',
+                label: tr('Details'),
                 textColor: Colors.white,
                 onPressed: () async => {
                       await showDialog(
                           barrierDismissible: true,
                           context: context,
                           builder: (builder) => AlertDialog(
-                                title: const Text('Error'),
+                                title: Text(tr('Error')),
                                 content: Column(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Text(
-                                        "The following error occured. If this error persists, please report it.\n"),
+                                    Text(
+                                        "${tr("The following error occurred. If this error persists, please report it.")}\n"),
                                     Container(
                                         width: double.infinity,
                                         padding: const EdgeInsets.all(
@@ -54,7 +55,7 @@ class Error {
                                           .textTheme
                                           .labelLarge,
                                     ),
-                                    child: const Text('Report issue'),
+                                    child: Text(tr('Report issue')),
                                     onPressed: () async {
                                       final Uri url = Uri.parse(
                                           'https://github.com/jaimegarmun/Haim-TV-IPTV/issues/new');
@@ -68,7 +69,7 @@ class Error {
                                           .textTheme
                                           .labelLarge,
                                     ),
-                                    child: const Text('Copy'),
+                                    child: Text(tr('Copy')),
                                     onPressed: () {
                                       Clipboard.setData(ClipboardData(
                                           text: error.toString()));
@@ -80,7 +81,7 @@ class Error {
                                           .textTheme
                                           .labelLarge,
                                     ),
-                                    child: const Text('Close'),
+                                    child: Text(tr('Close')),
                                     onPressed: () {
                                       Navigator.of(context).pop();
                                     },
@@ -101,7 +102,7 @@ class Error {
 
   static Future<Result<T>> tryAsync<T>(
       Future<T?> Function() fn, BuildContext context,
-      [String? successMessage = "Action completed successfully",
+      [String? successMessage,
       bool useLoading = true,
       bool useSuccess = true]) async {
     var success = false;
@@ -111,7 +112,8 @@ class Error {
     }
     try {
       result = await fn();
-      if (useSuccess) showSuccess(context, successMessage!);
+      if (useSuccess) showSuccess(
+          context, successMessage ?? tr("Action completed successfully"));
       success = true;
     } catch (e, stackTrace) {
       final error = "${e.toString()}\n\n-- Dart Stack Trace --\n${stackTrace.toString()}";

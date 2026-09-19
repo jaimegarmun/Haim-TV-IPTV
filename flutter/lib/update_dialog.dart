@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/services/update_checker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -52,7 +53,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
       if (mounted) {
         setState(() {
           _downloading = false;
-          _error = "The update could not be installed: $e";
+          _error = tr("The update could not be installed: {error}", {
+            "error": e,
+          });
         });
       }
     }
@@ -64,8 +67,8 @@ class _UpdateDialogState extends State<UpdateDialog> {
     final messenger = ScaffoldMessenger.maybeOf(context);
     Navigator.of(context).pop();
     messenger?.showSnackBar(
-      const SnackBar(
-        content: Text("You can turn update checks back on in Settings"),
+      SnackBar(
+        content: Text(tr("You can turn update checks back on in Settings")),
       ),
     );
   }
@@ -74,7 +77,9 @@ class _UpdateDialogState extends State<UpdateDialog> {
   Widget build(BuildContext context) {
     final release = widget.release;
     return AlertDialog(
-      title: Text("Update available: ${release.version}"),
+      title: Text(
+        tr("Update available: {version}", {"version": release.version}),
+      ),
       content: SizedBox(
         width: 480,
         child: _downloading
@@ -84,8 +89,10 @@ class _UpdateDialogState extends State<UpdateDialog> {
                 children: [
                   Text(
                     _progress == null
-                        ? "Downloading..."
-                        : "Downloading... ${(_progress! * 100).round()}%",
+                        ? tr("Downloading...")
+                        : tr("Downloading... {percent}%", {
+                            "percent": (_progress! * 100).round(),
+                          }),
                   ),
                   const SizedBox(height: 12),
                   LinearProgressIndicator(value: _progress),
@@ -100,9 +107,10 @@ class _UpdateDialogState extends State<UpdateDialog> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          "A new version of Haim TV is available. "
-                          "Do you want to update now?",
+                        Text(
+                          tr(
+                            "A new version of Haim TV is available. Do you want to update now?",
+                          ),
                         ),
                         if (release.notes.isNotEmpty) ...[
                           const SizedBox(height: 12),
@@ -126,16 +134,16 @@ class _UpdateDialogState extends State<UpdateDialog> {
           : [
               TextButton(
                 onPressed: _neverAskAgain,
-                child: const Text("Don't show again"),
+                child: Text(tr("Don't show again")),
               ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text("Remind me later"),
+                child: Text(tr("Remind me later")),
               ),
               FilledButton(
                 autofocus: true,
                 onPressed: _update,
-                child: const Text("Yes, update"),
+                child: Text(tr("Yes, update")),
               ),
             ],
     );

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart' show kBackMouseButton;
 import 'package:flutter/services.dart';
+import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/memory.dart';
 import 'package:open_tv/generated/generated_proto.pb.dart' as gen;
 import 'package:open_tv/home.dart';
@@ -47,6 +48,7 @@ Future<void> main() async {
     }
   }
   await Future.wait([
+    L10n.instance.load(),
     WatchProgressStore.instance.load(),
     FavoriteFoldersStore.instance.load(),
     // Also resumes unfinished downloads.
