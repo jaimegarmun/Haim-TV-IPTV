@@ -10,6 +10,7 @@ import 'package:open_tv/models/media_type.dart';
 import 'package:open_tv/models/view_type.dart';
 import 'package:open_tv/settings_view.dart';
 import 'package:open_tv/tv_live_folders.dart';
+import 'package:open_tv/update_dialog.dart';
 import 'package:open_tv/utils.dart';
 
 class TvHome extends StatefulWidget {
@@ -26,9 +27,10 @@ class _TvHomeState extends State<TvHome> {
   void initState() {
     super.initState();
     if (!widget.nested) {
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => Utils.maybeShowWhatsNew(context),
-      );
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await Utils.maybeShowWhatsNew(context);
+        if (mounted) await maybeOfferUpdate(context);
+      });
     }
   }
 

@@ -5,6 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:open_tv/back_navigation.dart';
 import 'package:open_tv/native_bridge.dart';
 import 'package:open_tv/services/download_manager.dart';
+import 'package:open_tv/services/source_names.dart';
+import 'package:open_tv/services/update_checker.dart';
+import 'package:open_tv/update_dialog.dart';
 import 'package:open_tv/side_margins.dart';
 import 'package:open_tv/bottom_nav.dart';
 import 'package:open_tv/confirm_delete.dart';
@@ -37,6 +40,7 @@ class _SettingsState extends State<SettingsView> {
   Settings settings = Settings();
   List<Source> sources = [];
   bool loading = true;
+  bool checkUpdatesOnStart = true;
   @override
   void initState() {
     super.initState();
@@ -47,12 +51,37 @@ class _SettingsState extends State<SettingsView> {
     var results = await Future.wait([
       NativeBridge.instance.getSettings(),
       NativeBridge.instance.getSources(),
+      UpdateChecker.instance.isCheckOnStartEnabled(),
     ]);
     setState(() {
       settings = results[0] as Settings;
       sources = results[1] as List<Source>;
+      checkUpdatesOnStart = results[2] as bool;
       loading = false;
     });
+  }
+
+  Future<void> checkForUpdatesNow() async {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Checking for updates...")));
+    final release = await UpdateChecker.instance.checkNow();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    if (release == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("You have the latest version")),
+      );
+      return;
+    }
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => UpdateDialog(release: release),
+    );
+    // "Don't show again" may have been chosen.
+    final enabled = await UpdateChecker.instance.isCheckOnStartEnabled();
+    if (mounted) setState(() => checkUpdatesOnStart = enabled);
   }
 
   void updateView(ViewType view) {
@@ -162,11 +191,24 @@ class _SettingsState extends State<SettingsView> {
         onLongPress: () => toggleSource(source),
         contentPadding: const EdgeInsets.only(left: 20),
         title: Text(source.name),
-        subtitle: Text(source.sourceType.label),
+        subtitle: Text(
+          source.enabled
+              ? source.sourceType.label
+              : "${source.sourceType.label} · Disabled (hidden, not deleted)",
+        ),
         trailing: Row(
           mainAxisSize:
               MainAxisSize.min, // Ensures the row takes up minimal space
           children: [
+            Tooltip(
+              message: source.enabled
+                  ? "Disable (hide its channels)"
+                  : "Enable",
+              child: Switch(
+                value: source.enabled,
+                onChanged: (_) => toggleSource(source),
+              ),
+            ),
             Offstage(
               offstage: source.sourceType == SourceType.m3u,
               child: IconButton(
@@ -233,6 +275,7 @@ class _SettingsState extends State<SettingsView> {
       () async => sources = await NativeBridge.instance.getSources(),
       context,
     );
+    await SourceNames.instance.load();
     setState(() {
       sources;
     });
@@ -452,6 +495,32 @@ class _SettingsState extends State<SettingsView> {
                         ),
                       ],
                     ),
+                  ),
+                  const Divider(),
+                  const Padding(
+                    padding: EdgeInsets.only(left: 10),
+                    child: Text(
+                      'Updates',
+                      style: TextStyle(
+                        fontSize: 30,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  ListTile(
+                    title: const Text("Check for updates on start"),
+                    trailing: Switch(
+                      value: checkUpdatesOnStart,
+                      onChanged: (bool value) {
+                        setState(() => checkUpdatesOnStart = value);
+                        UpdateChecker.instance.setCheckOnStart(value);
+                      },
+                    ),
+                  ),
+                  ListTile(
+                    title: const Text("Check for updates now"),
+                    trailing: const Icon(Icons.system_update),
+                    onTap: checkForUpdatesNow,
                   ),
                   const Divider(),
                   const Padding(

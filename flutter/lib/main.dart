@@ -15,6 +15,7 @@ import 'package:open_tv/models/settings.dart';
 import 'package:open_tv/services/data_migration.dart';
 import 'package:open_tv/services/download_manager.dart';
 import 'package:open_tv/services/favorite_folders.dart';
+import 'package:open_tv/services/source_names.dart';
 import 'package:open_tv/services/watch_progress.dart';
 import 'package:open_tv/utils.dart';
 import 'package:open_tv/native_bridge.dart' as nb;
@@ -51,6 +52,7 @@ Future<void> main() async {
     // Also resumes unfinished downloads.
     DownloadManager.instance.load(),
   ]);
+  await SourceNames.instance.load();
   final hasSources = await nb.NativeBridge.instance.hasSources();
   final settings = await nb.NativeBridge.instance.getSettings();
   final hasTouchScreen = await Utils.hasTouchScreen();
@@ -117,6 +119,20 @@ class MyApp extends StatelessWidget {
             ): () {
               if (_isEditingText) return;
               navigatorKey.currentState?.maybePop();
+            },
+            // On Linux the mouse "back" side button often arrives as the
+            // browser-back key or as Alt+Left instead of a mouse button.
+            const CustomShortcut(
+              SingleActivator(LogicalKeyboardKey.browserBack),
+            ): () {
+              if (!videoPlayerOpen) navigatorKey.currentState?.maybePop();
+            },
+            const CustomShortcut(
+              SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true),
+            ): () {
+              if (!videoPlayerOpen && !_isEditingText) {
+                navigatorKey.currentState?.maybePop();
+              }
             },
           },
           // The mouse "back" side button goes back, except in the player

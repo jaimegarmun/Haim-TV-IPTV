@@ -10,17 +10,20 @@ import 'package:open_tv/channel_tile.dart';
 import 'package:open_tv/downloads_view.dart';
 import 'package:open_tv/favorites_hub.dart';
 import 'package:open_tv/services/favorite_folders.dart';
+import 'package:open_tv/services/source_names.dart';
 import 'package:open_tv/loading.dart';
 import 'package:open_tv/models/channel.dart';
 import 'package:open_tv/models/filters.dart';
 import 'package:open_tv/models/home_manager.dart';
 import 'package:open_tv/models/id_data.dart';
+import 'package:open_tv/models/media_type.dart';
 import 'package:open_tv/models/no_push_animation_material_page_route.dart';
 import 'package:open_tv/models/node.dart';
 import 'package:open_tv/models/node_type.dart';
 import 'package:open_tv/models/sort_type.dart';
 import 'package:open_tv/models/view_type.dart';
 import 'package:open_tv/select_dialog.dart';
+import 'package:open_tv/update_dialog.dart';
 import 'package:open_tv/error.dart';
 import 'package:open_tv/utils.dart';
 
@@ -88,6 +91,8 @@ class _HomeState extends State<Home> {
   }
 
   Future<void> initializeAsync() async {
+    // Picks up accounts added or renamed since the last screen.
+    if (widget.home.node == null) SourceNames.instance.load();
     if (widget.home.filters.sourceIds == null) {
       final sources = await NativeBridge.instance.getEnabledSourcesMinimal();
       widget.home.filters.sourceIds = sources;
@@ -101,6 +106,8 @@ class _HomeState extends State<Home> {
     if (!mounted) return;
     if (widget.firstLaunch) {
       await Utils.maybeShowWhatsNew(context);
+      // Not awaited: the refresh below should not wait for GitHub.
+      if (mounted) maybeOfferUpdate(context);
     }
     if (!mounted) return;
     if (widget.refresh) {
@@ -137,6 +144,48 @@ class _HomeState extends State<Home> {
           Navigator.of(context).pop();
           load(false);
         },
+      ),
+    );
+  }
+
+  /// Series and seasons only hold episodes, so the filter is pointless there.
+  bool get _showMediaTypeFilter => widget.home.filters.seriesId == null;
+
+  void toggleMediaType(MediaType type) {
+    final current = widget.home.filters.mediaTypes ?? [];
+    final selected = current.contains(type)
+        ? current.where((t) => t != type).toList()
+        : [...current, type];
+    // Showing nothing makes no sense; keep at least one type.
+    if (selected.isEmpty) return;
+    setState(() => widget.home.filters.mediaTypes = selected);
+    load(false);
+  }
+
+  /// Live / Movies / Series toggles, like Fred TV. Favorite folders are not
+  /// affected: they are always listed, whatever is selected here.
+  Widget _buildMediaTypeFilter() {
+    const types = [
+      (MediaType.livestream, Icons.live_tv, "Channels"),
+      (MediaType.movie, Icons.movie, "Movies"),
+      (MediaType.serie, Icons.local_movies, "Series"),
+    ];
+    final selected = widget.home.filters.mediaTypes ?? [];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          for (final (type, icon, label) in types)
+            FilterChip(
+              avatar: Icon(icon, size: 18),
+              label: Text(label),
+              selected: selected.contains(type),
+              showCheckmark: false,
+              onSelected: (_) => toggleMediaType(type),
+            ),
+        ],
       ),
     );
   }
@@ -475,6 +524,8 @@ class _HomeState extends State<Home> {
                       ),
                     ),
                   ),
+                  if (_showMediaTypeFilter)
+                    SliverToBoxAdapter(child: _buildMediaTypeFilter()),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(10, 5, 10, 10),
                     sliver: SliverGrid(

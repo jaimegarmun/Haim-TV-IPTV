@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:open_tv/error.dart';
+import 'package:open_tv/held_key_guard.dart';
 import 'package:open_tv/home.dart';
 import 'package:open_tv/memory.dart';
 import 'package:open_tv/models/channel.dart';
@@ -336,7 +337,7 @@ Future<void> showChannelOptions(
   ];
   if (actions.isEmpty) return;
 
-  final selected = await showDialog<int>(
+  final selected = await showHeldKeySafeDialog<int>(
     context: context,
     builder: (context) => SimpleDialog(
       title: Text(channel.name, maxLines: 2, overflow: TextOverflow.ellipsis),

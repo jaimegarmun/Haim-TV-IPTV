@@ -5,6 +5,7 @@ import 'package:open_tv/channel_actions.dart';
 import 'package:open_tv/channel_grid_view.dart';
 import 'package:open_tv/confirm_delete.dart';
 import 'package:open_tv/folder_tile.dart';
+import 'package:open_tv/held_key_guard.dart';
 import 'package:open_tv/services/favorite_folders.dart';
 
 /// Opens the channels of a user folder.
@@ -33,7 +34,7 @@ Future<void> showFolderOptions(
   FavoriteFolder folder,
 ) async {
   final store = FavoriteFoldersStore.instance;
-  final choice = await showDialog<int>(
+  final choice = await showHeldKeySafeDialog<int>(
     context: context,
     builder: (context) => SimpleDialog(
       title: Text(folder.name),

@@ -70,4 +70,6 @@ dependencies {
     implementation "androidx.media3:media3-exoplayer-dash:$media3_version"
     implementation "androidx.media3:media3-datasource:$media3_version"
     implementation "androidx.media3:media3-ui:$media3_version"
+    // FileProvider, to hand downloaded updates to the installer.
+    implementation "androidx.core:core:1.13.1"
 }

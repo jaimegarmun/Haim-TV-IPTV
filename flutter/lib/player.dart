@@ -369,6 +369,15 @@ class _PlayerState extends State<Player> {
     const SingleActivator(LogicalKeyboardKey.arrowRight): () => seekWithOsd(5),
     const SingleActivator(LogicalKeyboardKey.keyJ): () => seekWithOsd(-10),
     const SingleActivator(LogicalKeyboardKey.keyL): () => seekWithOsd(10),
+    // Mouse side buttons as delivered by some Linux setups.
+    const SingleActivator(LogicalKeyboardKey.browserBack): () =>
+        seekWithOsd(-5),
+    const SingleActivator(LogicalKeyboardKey.browserForward): () =>
+        seekWithOsd(5),
+    const SingleActivator(LogicalKeyboardKey.arrowLeft, alt: true): () =>
+        seekWithOsd(-5),
+    const SingleActivator(LogicalKeyboardKey.arrowRight, alt: true): () =>
+        seekWithOsd(5),
     const SingleActivator(LogicalKeyboardKey.arrowUp): () =>
         changeVolumeWithOsd(5),
     const SingleActivator(LogicalKeyboardKey.arrowDown): () =>

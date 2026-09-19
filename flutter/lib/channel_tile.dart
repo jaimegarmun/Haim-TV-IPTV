@@ -6,6 +6,7 @@ import 'package:open_tv/channel_actions.dart';
 import 'package:open_tv/memory.dart';
 import 'package:open_tv/models/channel.dart';
 import 'package:open_tv/services/download_manager.dart';
+import 'package:open_tv/services/source_names.dart';
 import 'package:open_tv/services/watch_progress.dart';
 import 'package:open_tv/error.dart';
 import 'package:open_tv/models/media_type.dart';
@@ -124,6 +125,8 @@ class _ChannelTileState extends State<ChannelTile> {
     if (_selectionKeys.contains(event.logicalKey)) {
       if (event is KeyDownEvent) {
         _selectKeyDown = true;
+        // The release of a previous hold may have gone to the options menu.
+        _longPressTriggered = false;
         _longPressTimer?.cancel();
         _statesController.update(WidgetState.pressed, true);
         _showSplash();
@@ -379,6 +382,36 @@ class _ChannelTileState extends State<ChannelTile> {
     }
   }
 
+  /// Which account (source) the channel comes from.
+  Widget _buildSourceName(BuildContext context) {
+    return ListenableBuilder(
+      listenable: SourceNames.instance,
+      builder: (context, _) {
+        final name = SourceNames.instance.nameOf(widget.channel.sourceId);
+        if (name == null) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: Row(
+            children: [
+              const Icon(Icons.account_circle, size: 14, color: Colors.grey),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   Widget _buildContent(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -405,18 +438,24 @@ class _ChannelTileState extends State<ChannelTile> {
           flex: 3,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                widget.channel.name,
-                textAlign: TextAlign.left,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: Theme.of(context).textTheme.titleMedium?.fontSize!,
-                  fontWeight: FontWeight.w600,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.channel.name,
+                  textAlign: TextAlign.left,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: Theme.of(
+                      context,
+                    ).textTheme.titleMedium?.fontSize!,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
+                _buildSourceName(context),
+              ],
             ),
           ),
         ),

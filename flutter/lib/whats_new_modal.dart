@@ -43,6 +43,14 @@ class WhatsNewModal extends StatelessWidget {
           child: Padding(
             padding: EdgeInsets.only(right: 8.0),
             child: Text('''
+New in 1.0.1:
+
+- Haim TV checks for updates on start and can install them for you
+- Channels / Movies / Series filter at the top of every list
+- TV remote: holding OK opens the options menu again (folders, etc.)
+- Each channel shows which account it comes from
+- Turn a source off in Settings to hide it without deleting it
+
 Welcome to Haim TV! Here's what it can do:
 
 - Download movies and episodes to watch offline

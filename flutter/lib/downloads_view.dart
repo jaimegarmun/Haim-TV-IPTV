@@ -5,6 +5,7 @@ import 'package:open_tv/back_navigation.dart';
 import 'package:open_tv/side_margins.dart';
 import 'package:open_tv/confirm_delete.dart';
 import 'package:open_tv/exo_player.dart';
+import 'package:open_tv/held_key_guard.dart';
 import 'package:open_tv/native_bridge.dart';
 import 'package:open_tv/player.dart';
 import 'package:open_tv/services/download_manager.dart';
@@ -210,7 +211,7 @@ class _DownloadTile extends StatelessWidget {
         ),
       ),
     ];
-    final selected = await showDialog<int>(
+    final selected = await showHeldKeySafeDialog<int>(
       context: context,
       builder: (context) => SimpleDialog(
         title: Text(item.name, maxLines: 2, overflow: TextOverflow.ellipsis),
