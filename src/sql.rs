@@ -801,9 +801,10 @@ pub fn update_source(source: Source) -> Result<()> {
     sql.execute(
         r#"
         UPDATE sources
-        SET username = ?, password = ?, url = ?, user_agent = ?, stream_user_agent = ?
+        SET name = ?, username = ?, password = ?, url = ?, user_agent = ?, stream_user_agent = ?
         WHERE id = ?"#,
         params![
+            source.name,
             source.username,
             source.password,
             source.url,

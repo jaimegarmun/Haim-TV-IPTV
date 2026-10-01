@@ -1,0 +1,33 @@
+# Builds the Rust library for Android. The .so files live in the repo
+# (flutter/android/app/src/main/jniLibs) because the APK is built and signed
+# locally; run this workflow after changing anything under src/ and commit
+# the artifact it produces.
+name: Android native library
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
+      - name: Build
+        run: |
+          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 --platform 24 \
+            -o flutter/android/app/src/main/jniLibs build --release
+
+      - name: Upload jniLibs
+        uses: actions/upload-artifact@v4
+        with:
+          name: jnilibs
+          path: flutter/android/app/src/main/jniLibs/
+          if-no-files-found: error
