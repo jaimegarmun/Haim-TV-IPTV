@@ -38,6 +38,10 @@ const Map<String, String> esBrowse = {
 
   // channel_grid_view.dart
   "Nothing here yet": "Aquí no hay nada todavía",
+  "Search in this folder": "Buscar en esta carpeta",
+  "Clear search": "Borrar la búsqueda",
+  "1 match": "1 coincidencia",
+  "{count} matches": "{count} coincidencias",
 
   // favorites_hub.dart
   "This folder is empty.\nHold a channel and choose \"Add to folder...\".":

@@ -5,6 +5,18 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _whatsNewEn = '''
+New in 1.0.3:
+
+- PC: double click goes fullscreen without pausing, and clicking the seek
+  bar or the back arrow no longer plays or pauses the video
+- The volume of the player is remembered
+- Live channels buffer better on PC; if they still stutter, turn off
+  "Rewind live channels" in Settings
+- Search bar inside folders
+- You can rename a source you already added
+- PC: the window opens where and how you left it
+- Windows: proper installer (.exe)
+
 New in 1.0.2:
 
 - Spanish language: choose it in Settings > Language
@@ -33,6 +45,18 @@ Found a problem? Report it on GitHub from any error message.
 ''';
 
 const _whatsNewEs = '''
+Novedades de la 1.0.3:
+
+- PC: el doble clic pasa a pantalla completa sin pausar, y pulsar la barra
+  de tiempo o la flecha de volver ya no pausa ni reanuda el vídeo
+- Se recuerda el volumen del reproductor
+- Los directos se almacenan mejor en PC; si aun así se entrecortan,
+  desactiva "Retroceder en canales en directo" en Ajustes
+- Barra de búsqueda dentro de las carpetas
+- Puedes cambiar el nombre de una fuente ya añadida
+- PC: la ventana se abre donde y como la dejaste
+- Windows: instalador propio (.exe)
+
 Novedades de la 1.0.2:
 
 - Idioma español: elígelo en Ajustes > Idioma

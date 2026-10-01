@@ -2,6 +2,11 @@
 
 #include <dwmapi.h>
 #include <flutter_windows.h>
+#include <shlobj.h>
+
+#include <cstdlib>
+#include <fstream>
+#include <sstream>
 
 #include "resource.h"
 
@@ -51,6 +56,155 @@ void EnableFullDpiSupportIfAvailable(HWND hwnd) {
     enable_non_client_dpi_scaling(hwnd);
   }
   FreeLibrary(user32_module);
+}
+
+// Window geometry remembered between runs. The rectangle is the *restored*
+// (non-maximized) frame in physical pixels, so it must never be DPI scaled
+// again when it is applied.
+struct SavedWindowState {
+  int x = 0;
+  int y = 0;
+  int width = 0;
+  int height = 0;
+  bool maximized = false;
+};
+
+// A window smaller than this is treated as corrupt rather than restored.
+constexpr int kMinRestoredWidth = 400;
+constexpr int kMinRestoredHeight = 300;
+constexpr int kMaxRestoredSize = 30000;
+
+// Full path of the geometry file, stored next to the app's other data
+// (watch_progress.json, favorites, ...). Returns an empty string on failure.
+std::wstring GetWindowStateFilePath(bool create_directories) {
+  PWSTR roaming_path = nullptr;
+  if (FAILED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr,
+                                  &roaming_path))) {
+    return std::wstring();
+  }
+  std::wstring path(roaming_path);
+  CoTaskMemFree(roaming_path);
+
+  path += L"\\jaimegarmun";
+  if (create_directories) {
+    CreateDirectory(path.c_str(), nullptr);
+  }
+  path += L"\\Haim TV";
+  if (create_directories) {
+    CreateDirectory(path.c_str(), nullptr);
+  }
+  return path + L"\\window_state.json";
+}
+
+// Minimal readers for the flat JSON object written by |SaveWindowState|. A
+// real parser would mean a new dependency, which this project can't take.
+bool ReadJsonInt(const std::string& json, const char* name, int* value) {
+  std::string key = std::string("\"") + name + "\"";
+  size_t pos = json.find(key);
+  if (pos == std::string::npos) {
+    return false;
+  }
+  pos = json.find(':', pos + key.length());
+  if (pos == std::string::npos) {
+    return false;
+  }
+  *value = std::atoi(json.c_str() + pos + 1);
+  return true;
+}
+
+bool ReadJsonBool(const std::string& json, const char* name, bool* value) {
+  std::string key = std::string("\"") + name + "\"";
+  size_t pos = json.find(key);
+  if (pos == std::string::npos) {
+    return false;
+  }
+  pos = json.find(':', pos + key.length());
+  if (pos == std::string::npos) {
+    return false;
+  }
+  pos = json.find_first_not_of(" \t", pos + 1);
+  if (pos == std::string::npos) {
+    return false;
+  }
+  *value = json.compare(pos, 4, "true") == 0;
+  return true;
+}
+
+// Reads back the state saved by the previous run. Returns false when there is
+// no usable state, in which case the caller keeps its own defaults.
+bool LoadWindowState(SavedWindowState* state) {
+  std::wstring path = GetWindowStateFilePath(false);
+  if (path.empty()) {
+    return false;
+  }
+  std::ifstream file(path.c_str(), std::ios::binary);
+  if (!file) {
+    return false;
+  }
+  std::ostringstream contents;
+  contents << file.rdbuf();
+  std::string json = contents.str();
+
+  SavedWindowState loaded;
+  if (!ReadJsonInt(json, "x", &loaded.x) ||
+      !ReadJsonInt(json, "y", &loaded.y) ||
+      !ReadJsonInt(json, "width", &loaded.width) ||
+      !ReadJsonInt(json, "height", &loaded.height)) {
+    return false;
+  }
+  ReadJsonBool(json, "maximized", &loaded.maximized);
+
+  // Reject absurd sizes, and rectangles that no longer land on a connected
+  // monitor (e.g. a second screen that has been unplugged).
+  if (loaded.width < kMinRestoredWidth || loaded.height < kMinRestoredHeight ||
+      loaded.width > kMaxRestoredSize || loaded.height > kMaxRestoredSize) {
+    return false;
+  }
+  RECT bounds = {loaded.x, loaded.y, loaded.x + loaded.width,
+                 loaded.y + loaded.height};
+  if (MonitorFromRect(&bounds, MONITOR_DEFAULTTONULL) == nullptr) {
+    return false;
+  }
+
+  *state = loaded;
+  return true;
+}
+
+// Writes the current geometry of |hwnd|. GetWindowPlacement is used instead of
+// GetWindowRect so that a window closed while maximized still stores the size
+// it would return to.
+bool SaveWindowState(HWND hwnd) {
+  if (hwnd == nullptr) {
+    return false;
+  }
+  WINDOWPLACEMENT placement{};
+  placement.length = sizeof(WINDOWPLACEMENT);
+  if (!GetWindowPlacement(hwnd, &placement)) {
+    return false;
+  }
+  const RECT& normal = placement.rcNormalPosition;
+  SavedWindowState state;
+  state.x = normal.left;
+  state.y = normal.top;
+  state.width = normal.right - normal.left;
+  state.height = normal.bottom - normal.top;
+  state.maximized = placement.showCmd == SW_SHOWMAXIMIZED || IsZoomed(hwnd);
+  if (state.width <= 0 || state.height <= 0) {
+    return false;
+  }
+
+  std::wstring path = GetWindowStateFilePath(true);
+  if (path.empty()) {
+    return false;
+  }
+  std::ofstream file(path.c_str(), std::ios::binary | std::ios::trunc);
+  if (!file) {
+    return false;
+  }
+  file << "{\"x\":" << state.x << ",\"y\":" << state.y
+       << ",\"width\":" << state.width << ",\"height\":" << state.height
+       << ",\"maximized\":" << (state.maximized ? "true" : "false") << "}\n";
+  return file.good();
 }
 
 }  // namespace
@@ -134,14 +288,46 @@ bool Win32Window::Create(const std::wstring& title,
   UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
   double scale_factor = dpi / 96.0;
 
+  // Default placement: the caller passes logical values, which are scaled for
+  // the monitor the window would open on.
+  int window_x = Scale(origin.x, scale_factor);
+  int window_y = Scale(origin.y, scale_factor);
+  int window_width = Scale(size.width, scale_factor);
+  int window_height = Scale(size.height, scale_factor);
+
+  // Geometry remembered from the previous run wins over the default. It is
+  // already in physical pixels, so it is used as-is (no second DPI scaling).
+  SavedWindowState saved_state;
+  bool has_saved_state = LoadWindowState(&saved_state);
+  if (has_saved_state) {
+    window_x = saved_state.x;
+    window_y = saved_state.y;
+    window_width = saved_state.width;
+    window_height = saved_state.height;
+    restore_maximized_ = saved_state.maximized;
+  }
+
   HWND window = CreateWindow(
       window_class, title.c_str(), WS_OVERLAPPEDWINDOW,
-      Scale(origin.x, scale_factor), Scale(origin.y, scale_factor),
-      Scale(size.width, scale_factor), Scale(size.height, scale_factor),
+      window_x, window_y, window_width, window_height,
       nullptr, nullptr, GetModuleHandle(nullptr), this);
 
   if (!window) {
     return false;
+  }
+
+  if (has_saved_state) {
+    // Feed the restore rectangle back through the placement API that
+    // |SaveWindowState| read it from, so a window that comes back maximized
+    // still un-maximizes to its old size. SW_HIDE keeps the window hidden
+    // until the first Flutter frame calls |Show|.
+    WINDOWPLACEMENT placement{};
+    placement.length = sizeof(WINDOWPLACEMENT);
+    placement.showCmd = SW_HIDE;
+    placement.rcNormalPosition = {window_x, window_y,
+                                  window_x + window_width,
+                                  window_y + window_height};
+    SetWindowPlacement(window, &placement);
   }
 
   UpdateTheme(window);
@@ -150,7 +336,9 @@ bool Win32Window::Create(const std::wstring& title,
 }
 
 bool Win32Window::Show() {
-  return ShowWindow(window_handle_, SW_SHOWNORMAL);
+  // Come back maximized if that is how the window was last closed.
+  return ShowWindow(window_handle_,
+                    restore_maximized_ ? SW_SHOWMAXIMIZED : SW_SHOWNORMAL);
 }
 
 // static
@@ -179,7 +367,19 @@ Win32Window::MessageHandler(HWND hwnd,
                             WPARAM const wparam,
                             LPARAM const lparam) noexcept {
   switch (message) {
+    case WM_CLOSE:
+      // Remember where and how the window was closed, while its placement is
+      // still meaningful. DefWindowProc then goes on to destroy it.
+      if (!state_saved_) {
+        state_saved_ = SaveWindowState(hwnd);
+      }
+      break;
+
     case WM_DESTROY:
+      // Fallback for a window destroyed without a WM_CLOSE first.
+      if (!state_saved_) {
+        state_saved_ = SaveWindowState(hwnd);
+      }
       window_handle_ = nullptr;
       Destroy();
       if (quit_on_close_) {

@@ -26,6 +26,53 @@ class EditDialog extends StatefulWidget {
 class _EditDialogState extends State<EditDialog> {
   final _formKey = GlobalKey<FormBuilderState>();
 
+  /// Names already used by another source, as in setup.dart.
+  final Set<String> _takenNames = {};
+
+  bool get _isXtream => widget.source.sourceType == SourceType.xtream;
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.saveAndValidate()) {
+      return;
+    }
+    final name = (_formKey.currentState?.value["name"] as String? ?? "").trim();
+    // The source keeps its own name, so only a different one can clash.
+    if (name != widget.source.name &&
+        await NativeBridge.instance.sourceNameExists(name)) {
+      if (!mounted) return;
+      setState(() => _takenNames.add(name));
+      _formKey.currentState?.validate();
+      return;
+    }
+    if (!mounted || !widget.parentContext.mounted) return;
+    Navigator.of(context).pop();
+    await Error.tryAsyncNoLoading(
+      () async => await NativeBridge.instance.updateSource(
+        Source(
+          id: widget.source.id,
+          name: name,
+          sourceType: widget.source.sourceType,
+          url: _formKey.currentState?.value["url"],
+          username: _isXtream ? _formKey.currentState?.value["username"] : null,
+          password: _isXtream ? _formKey.currentState?.value["password"] : null,
+        ),
+      ),
+      widget.parentContext,
+    );
+    await widget.afterSave();
+  }
+
+  String? _validateName(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) {
+      return null;
+    }
+    if (_takenNames.contains(trimmed)) {
+      return tr("Name already exists");
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -33,33 +80,7 @@ class _EditDialogState extends State<EditDialog> {
         child: AlertDialog(
           title: Text(tr("Edit source {name}", {"name": widget.source.name})),
           actions: [
-            TextButton(
-              onPressed: () async {
-                if (!_formKey.currentState!.saveAndValidate()) {
-                  return;
-                }
-                Navigator.of(context).pop();
-                await Error.tryAsyncNoLoading(
-                  () async => await NativeBridge.instance.updateSource(
-                    Source(
-                      id: widget.source.id,
-                      name: widget.source.name,
-                      sourceType: widget.source.sourceType,
-                      url: _formKey.currentState?.value["url"],
-                      username: widget.source.sourceType == SourceType.xtream
-                          ? _formKey.currentState?.value["username"]
-                          : null,
-                      password: widget.source.sourceType == SourceType.xtream
-                          ? _formKey.currentState?.value["password"]
-                          : null,
-                    ),
-                  ),
-                  widget.parentContext,
-                );
-                await widget.afterSave();
-              },
-              child: Text(tr("Save")),
-            ),
+            TextButton(onPressed: _save, child: Text(tr("Save"))),
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text(tr("Cancel")),
@@ -73,6 +94,25 @@ class _EditDialogState extends State<EditDialog> {
                 const SizedBox(height: 15),
                 FormBuilderTextField(
                   autofocus: true,
+                  autocorrect: false,
+                  textInputAction: TextInputAction.next,
+                  initialValue: widget.source.name,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  validator: FormBuilderValidators.compose([
+                    FormBuilderValidators.required(
+                      errorText: tr("This field cannot be empty."),
+                    ),
+                    _validateName,
+                  ]),
+                  decoration: InputDecoration(
+                    labelText: tr("Name"),
+                    prefixIcon: const Icon(Icons.label_outline),
+                    border: const OutlineInputBorder(),
+                  ),
+                  name: 'name',
+                ),
+                const SizedBox(height: 30),
+                FormBuilderTextField(
                   textInputAction: TextInputAction.next,
                   initialValue: widget.source.url,
                   autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -89,19 +129,19 @@ class _EditDialogState extends State<EditDialog> {
                   name: 'url',
                 ),
                 Visibility(
-                  visible: widget.source.sourceType == SourceType.xtream,
+                  visible: _isXtream,
                   child: const SizedBox(height: 30),
                 ),
                 Visibility(
-                  visible: widget.source.sourceType == SourceType.xtream,
+                  visible: _isXtream,
                   child: FormBuilderTextField(
                     textInputAction: TextInputAction.next,
                     initialValue: widget.source.username,
                     autovalidateMode: AutovalidateMode.onUserInteraction,
                     validator: FormBuilderValidators.compose([
                       FormBuilderValidators.required(
-                      errorText: tr("This field cannot be empty."),
-                    ),
+                        errorText: tr("This field cannot be empty."),
+                      ),
                     ]),
                     decoration: InputDecoration(
                       labelText: tr("Username"),
@@ -112,19 +152,19 @@ class _EditDialogState extends State<EditDialog> {
                   ),
                 ),
                 Visibility(
-                  visible: widget.source.sourceType == SourceType.xtream,
+                  visible: _isXtream,
                   child: const SizedBox(height: 30),
                 ),
                 Visibility(
-                  visible: widget.source.sourceType == SourceType.xtream,
+                  visible: _isXtream,
                   child: FormBuilderTextField(
                     textInputAction: TextInputAction.next,
                     initialValue: widget.source.password,
                     autovalidateMode: AutovalidateMode.onUserInteraction,
                     validator: FormBuilderValidators.compose([
                       FormBuilderValidators.required(
-                      errorText: tr("This field cannot be empty."),
-                    ),
+                        errorText: tr("This field cannot be empty."),
+                      ),
                     ]),
                     decoration: InputDecoration(
                       labelText: tr("Password"),

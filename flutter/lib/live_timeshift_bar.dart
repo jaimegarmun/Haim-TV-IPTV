@@ -6,9 +6,14 @@ import 'package:media_kit/media_kit.dart' as mk;
 import 'package:open_tv/services/watch_progress.dart';
 import 'package:open_tv/l10n/l10n.dart';
 
-/// How much of a live channel mpv keeps so it can be rewound. media_kit
-/// stores the demuxer cache on disk, so this does not use RAM.
-const String liveTimeshiftBackBuffer = "2GiB";
+/// How much of a live channel mpv reads ahead. A big enough buffer rides
+/// out slow moments of the connection without the picture stuttering.
+const String liveForwardBuffer = "192MiB";
+
+/// How much of a live channel mpv keeps so it can be rewound. This lives in
+/// memory, so a huge value makes playback stutter on long sessions: 384 MiB
+/// is around half an hour of a normal channel.
+const String liveTimeshiftBackBuffer = "384MiB";
 
 /// Configures mpv so everything watched since opening a live channel can be
 /// rewound. Must run before the stream is opened.

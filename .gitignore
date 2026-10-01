@@ -1,2 +1,5 @@
 /target
 out
+
+# Installers produced by windows-installer/haim-tv.iss
+dist/

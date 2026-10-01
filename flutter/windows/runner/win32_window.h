@@ -92,6 +92,13 @@ class Win32Window {
 
   bool quit_on_close_ = false;
 
+  // True when the saved geometry says the window was closed maximized.
+  bool restore_maximized_ = false;
+
+  // True once the geometry has been written out for this run, so that it is
+  // only saved once (on WM_CLOSE, with WM_DESTROY as a fallback).
+  bool state_saved_ = false;
+
   // window handle for top level window.
   HWND window_handle_ = nullptr;
 

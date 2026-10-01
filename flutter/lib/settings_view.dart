@@ -6,6 +6,7 @@ import 'package:open_tv/back_navigation.dart';
 import 'package:open_tv/native_bridge.dart';
 import 'package:open_tv/l10n/l10n.dart';
 import 'package:open_tv/services/download_manager.dart';
+import 'package:open_tv/services/player_prefs.dart';
 import 'package:open_tv/services/source_names.dart';
 import 'package:open_tv/services/update_checker.dart';
 import 'package:open_tv/update_dialog.dart';
@@ -43,6 +44,7 @@ class _SettingsState extends State<SettingsView> {
   List<Source> sources = [];
   bool loading = true;
   bool checkUpdatesOnStart = true;
+  bool liveRewind = PlayerPrefs.instance.liveRewind;
   @override
   void initState() {
     super.initState();
@@ -288,8 +290,10 @@ class _SettingsState extends State<SettingsView> {
               ),
             ),
             Offstage(
-              offstage: source.sourceType == SourceType.m3u || widget.tvMode,
+              // Any source can at least be renamed here.
+              offstage: widget.tvMode,
               child: IconButton(
+                tooltip: tr("Edit"),
                 icon: const Icon(Icons.edit),
                 onPressed: () async => await showEditDialog(context, source),
               ),
@@ -495,6 +499,22 @@ class _SettingsState extends State<SettingsView> {
                           },
                         ),
                       ],
+                    ),
+                  ),
+                  ListTile(
+                    title: Text(tr("Rewind live channels")),
+                    subtitle: Text(
+                      tr(
+                        "Keeps what you already watched of a live channel so you can rewind it. Turn it off if live channels stutter.",
+                      ),
+                      style: const TextStyle(color: Colors.grey),
+                    ),
+                    trailing: Switch(
+                      value: liveRewind,
+                      onChanged: (bool value) {
+                        setState(() => liveRewind = value);
+                        PlayerPrefs.instance.setLiveRewind(value);
+                      },
                     ),
                   ),
                   ListTile(

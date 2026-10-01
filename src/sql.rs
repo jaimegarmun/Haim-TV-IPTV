@@ -991,3 +991,48 @@ pub fn has_sources() -> Result<bool> {
         .optional()?
         .is_some())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn test_source(name: &str) -> Source {
+        Source {
+            id: None,
+            name: name.to_string(),
+            url: Some("http://example.com".to_string()),
+            url_origin: None,
+            username: Some("user".to_string()),
+            password: Some("pass".to_string()),
+            source_type: 1,
+            enabled: true,
+            user_agent: None,
+            stream_user_agent: None,
+            last_updated: None,
+        }
+    }
+
+    /// A renamed source keeps its id and its channels: only the row changes.
+    #[test]
+    fn update_source_saves_the_new_name() {
+        let dir = std::env::temp_dir().join(format!("haimtv-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        DB_PATH_OVERRIDE
+            .set(dir.to_string_lossy().to_string())
+            .unwrap();
+        apply_migrations().unwrap();
+
+        let id = do_tx(|tx| create_or_find_source_by_name(tx, &test_source("Old name"))).unwrap();
+
+        let mut renamed = test_source("New name");
+        renamed.id = Some(id);
+        renamed.username = Some("other".to_string());
+        update_source(renamed).unwrap();
+
+        let saved = get_source_from_id(id).unwrap();
+        assert_eq!(saved.name, "New name");
+        assert_eq!(saved.username, Some("other".to_string()));
+        assert_eq!(saved.id, Some(id));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}

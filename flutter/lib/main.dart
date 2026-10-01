@@ -16,6 +16,7 @@ import 'package:open_tv/models/settings.dart';
 import 'package:open_tv/services/data_migration.dart';
 import 'package:open_tv/services/download_manager.dart';
 import 'package:open_tv/services/favorite_folders.dart';
+import 'package:open_tv/services/player_prefs.dart';
 import 'package:open_tv/services/source_names.dart';
 import 'package:open_tv/services/watch_progress.dart';
 import 'package:open_tv/utils.dart';
@@ -49,6 +50,7 @@ Future<void> main() async {
   }
   await Future.wait([
     L10n.instance.load(),
+    PlayerPrefs.instance.load(),
     WatchProgressStore.instance.load(),
     FavoriteFoldersStore.instance.load(),
     // Also resumes unfinished downloads.

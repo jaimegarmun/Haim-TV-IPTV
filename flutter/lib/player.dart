@@ -19,6 +19,7 @@ import 'package:open_tv/live_timeshift_bar.dart';
 import 'package:open_tv/memory.dart';
 import 'package:open_tv/player_osd.dart';
 import 'package:open_tv/services/download_manager.dart';
+import 'package:open_tv/services/player_prefs.dart';
 import 'package:open_tv/services/watch_progress.dart';
 import 'package:open_tv/l10n/l10n.dart';
 
@@ -41,7 +42,7 @@ class _PlayerState extends State<Player> {
   List<StreamSubscription> subscriptions = [];
   DateTime _lastProgressSave = DateTime.now();
   final ValueNotifier<OsdEvent?> osd = ValueNotifier(null);
-  double _volumeBeforeMute = 100;
+  late double _volumeBeforeMute = PlayerPrefs.instance.volume;
 
   /// Finished download of this channel, played instead of the stream.
   late final String? localFile = DownloadManager.instance.localFileFor(
@@ -63,6 +64,10 @@ class _PlayerState extends State<Player> {
     await setMpvOptions();
     final seconds = _isMovie ? await _startSeconds() : null;
     await _startPlayback(seconds != null ? Duration(seconds: seconds) : null);
+    await player.setVolume(PlayerPrefs.instance.volume);
+    subscriptions.add(
+      player.stream.volume.listen(PlayerPrefs.instance.setVolume),
+    );
     subscriptions.add(
       player.stream.completed.listen((completed) {
         if (!completed) return;
@@ -113,23 +118,33 @@ class _PlayerState extends State<Player> {
   }
 
   Future<void> setMpvOptions() async {
-    if (player.platform is mk.NativePlayer) {
-      final nativePlayer = player.platform as mk.NativePlayer;
-      if (widget.channel.mediaType == MediaType.livestream) {
-        if (widget.settings.lowLatency) {
-          await nativePlayer.setProperty('profile', 'low-latency');
-        } else {
-          await enableLiveTimeshift(nativePlayer);
-        }
-      }
+    if (player.platform is! mk.NativePlayer) return;
+    final nativePlayer = player.platform as mk.NativePlayer;
+    if (widget.channel.mediaType != MediaType.livestream) return;
+    if (widget.settings.lowLatency) {
+      await nativePlayer.setProperty('profile', 'low-latency');
+      return;
     }
+    // Read ahead enough to ride out a slow moment of the connection, and
+    // reconnect instead of stopping when the server drops the stream.
+    await nativePlayer.setProperty('cache', 'yes');
+    await nativePlayer.setProperty('demuxer-max-bytes', liveForwardBuffer);
+    await nativePlayer.setProperty('demuxer-readahead-secs', '20');
+    await nativePlayer.setProperty('network-timeout', '10');
+    await nativePlayer.setProperty(
+      'stream-lavf-o',
+      'reconnect=1,reconnect_streamed=1,reconnect_on_network_error=1,'
+          'reconnect_delay_max=5',
+    );
+    if (_liveTimeshift) await enableLiveTimeshift(nativePlayer);
   }
 
-  /// Live channels can be paused and rewound, unless low latency mode
-  /// disabled the cache.
+  /// Live channels can be paused and rewound, unless low latency mode or
+  /// the live rewind setting disabled the cache.
   bool get _liveTimeshift =>
       widget.channel.mediaType == MediaType.livestream &&
-      !widget.settings.lowLatency;
+      !widget.settings.lowLatency &&
+      PlayerPrefs.instance.liveRewind;
 
   void onDisconnect() async {
     if (!mounted || exiting) return;
@@ -270,6 +285,7 @@ class _PlayerState extends State<Player> {
   void onExit() async {
     if (exiting) return;
     exiting = true;
+    PlayerPrefs.instance.flush();
     if (_isMovie) {
       WatchProgressStore.instance.update(
         widget.channel.url,
@@ -401,14 +417,37 @@ class _PlayerState extends State<Player> {
     if (event.buttons & kForwardMouseButton != 0) seekWithOsd(5);
   }
 
+  /// Clicking the video pauses it, like most desktop players, but only
+  /// after Flutter ruled out a double click: a double click is for going
+  /// fullscreen and must not pause. Clicks on the controls (back arrow,
+  /// seek bar, buttons) are handled by them and never reach this.
+  void _onVideoTap() {
+    if (Platform.isAndroid || Platform.isIOS) return;
+    if (!_canTogglePlay) return;
+    togglePlayWithOsd();
+  }
+
+  void _onVideoDoubleTap() {
+    if (Platform.isAndroid || Platform.isIOS) return;
+    key.currentState?.toggleFullscreen();
+  }
+
+  /// Live channels without the timeshift cache cannot be paused.
+  bool get _canTogglePlay =>
+      widget.channel.mediaType != MediaType.livestream || _liveTimeshift;
+
   Widget buildControls(VideoState state) {
     return Listener(
       onPointerDown: _onPointerDown,
-      child: Stack(
-        children: [
-          AdaptiveVideoControls(state),
-          Positioned.fill(child: PlayerOsd(events: osd)),
-        ],
+      child: GestureDetector(
+        onTap: _onVideoTap,
+        onDoubleTap: _onVideoDoubleTap,
+        child: Stack(
+          children: [
+            AdaptiveVideoControls(state),
+            Positioned.fill(child: PlayerOsd(events: osd)),
+          ],
+        ),
       ),
     );
   }
@@ -479,9 +518,10 @@ class _PlayerState extends State<Player> {
       hideMouseOnControlsRemoval: true,
       controlsHoverDuration: const Duration(seconds: 3),
       keyboardShortcuts: desktopShortcuts,
-      // Clicking the video pauses/resumes, like most desktop players.
-      playAndPauseOnTap:
-          widget.channel.mediaType != MediaType.livestream || _liveTimeshift,
+      // Play/pause and fullscreen are handled in buildControls: the
+      // built-in ones pause on the first click of a double click.
+      playAndPauseOnTap: false,
+      toggleFullscreenOnDoublePress: false,
       topButtonBar: [
         IconButton(
           onPressed: onExit,

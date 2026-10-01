@@ -28,9 +28,22 @@ jobs:
           flutter pub get
           flutter build windows --release
 
+      - name: Build installer
+        run: |
+          $version = (Select-String -Path flutter/pubspec.yaml -Pattern '^version:\s*([0-9.]+)').Matches[0].Groups[1].Value
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DAppVersion=$version" windows-installer\haim-tv.iss
+        shell: pwsh
+
       - name: Upload bundle artifact
         uses: actions/upload-artifact@v4
         with:
           name: haim-tv-windows
           path: flutter/build/windows/x64/runner/Release/
+          if-no-files-found: error
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: haim-tv-windows-setup
+          path: dist/*.exe
           if-no-files-found: error

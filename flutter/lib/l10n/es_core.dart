@@ -28,6 +28,9 @@ const Map<String, String> esCore = {
   "Force TV Mode": "Forzar modo TV",
   "Low latency livestreams": "Directos de baja latencia",
   "Refresh sources on start": "Actualizar fuentes al arrancar",
+  "Rewind live channels": "Retroceder en canales en directo",
+  "Keeps what you already watched of a live channel so you can rewind it. Turn it off if live channels stutter.":
+      "Guarda lo que ya has visto de un canal en directo para poder retroceder. Desactívalo si los directos se entrecortan.",
   "Show livestreams": "Mostrar canales",
   "Show movies": "Mostrar películas",
   "Show series": "Mostrar series",
@@ -49,6 +52,7 @@ const Map<String, String> esCore = {
   "Only new downloads use the new folder; existing ones stay where they are.":
       "Solo las nuevas descargas usan la nueva carpeta; las que ya tienes se quedan donde están.",
   "Sources": "Fuentes",
+  "Edit": "Editar",
   "Source enabled": "Fuente activada",
   "Source disabled": "Fuente desactivada",
   "{type} · Disabled (hidden, not deleted)":

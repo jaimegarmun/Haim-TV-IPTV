@@ -40,6 +40,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.0.3" date="2026-10-01">
+      <description>
+        <p>Player fixes (double click, volume, seeking), search inside folders, the window remembers its place, and a Windows installer.</p>
+      </description>
+    </release>
     <release version="1.0.2" date="2026-09-19">
       <description>
         <p>Spanish language, TV search screen with a QWERTY keyboard, app icon in every size for taskbars.</p>

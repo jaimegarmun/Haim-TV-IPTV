@@ -36,6 +36,7 @@ import androidx.media3.exoplayer.util.EventLogger
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.DefaultTimeBar
 import androidx.media3.ui.PlayerView
+import androidx.media3.ui.TimeBar
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
@@ -72,6 +73,9 @@ class ExoPlayerView(
     private var seekAccumulatedMs = 0L
     private var seekDirection = 0
     private var lastSeekTapAt = 0L
+
+    // Play state before the current drag of the seek bar.
+    private var playWhenReadyBeforeScrub = true
     private val hideSeekBubble = Runnable {
         seekBubble.animate().alpha(0f).setDuration(250).start()
         seekAccumulatedMs = 0L
@@ -142,6 +146,7 @@ class ExoPlayerView(
         playerView.controllerShowTimeoutMs = 1500
         playerView.isFocusable = true
         makeSeekBarGranular()
+        keepPlayStateAcrossSeeks()
         syncControllerVisibility()
         if (isLive) hideLiveControls()
     }
@@ -149,6 +154,29 @@ class ExoPlayerView(
     private fun makeSeekBarGranular() {
         val timeBar = playerView.findViewById<View?>(androidx.media3.ui.R.id.exo_progress) as? DefaultTimeBar
         timeBar?.setKeyTimeIncrement(SEEK_INCREMENT_MS)
+    }
+
+    /**
+     * Dragging (or tapping) the seek bar must not change whether the video is
+     * playing: the state is saved when the scrub starts and put back after
+     * Media3 has handled the seek.
+     */
+    private fun keepPlayStateAcrossSeeks() {
+        if (isLive) return
+        val seekBar = playerView.findViewById<View?>(androidx.media3.ui.R.id.exo_progress) as? DefaultTimeBar
+        seekBar?.addListener(object : TimeBar.OnScrubListener {
+            override fun onScrubStart(timeBar: TimeBar, position: Long) {
+                playWhenReadyBeforeScrub = player.playWhenReady
+            }
+
+            override fun onScrubMove(timeBar: TimeBar, position: Long) = Unit
+
+            override fun onScrubStop(timeBar: TimeBar, position: Long, canceled: Boolean) {
+                val wasPlaying = playWhenReadyBeforeScrub
+                // Posted so it runs after Media3's own scrub handling.
+                handler.post { player.playWhenReady = wasPlaying }
+            }
+        })
     }
 
     private fun syncControllerVisibility() {
@@ -225,9 +253,11 @@ class ExoPlayerView(
                 return false
             }
         })
-        playerView.setOnTouchListener { view, event ->
+        // PlayerView.performClick() toggles the controller by itself, which
+        // undid the toggle made in onSingleTapConfirmed, so it is not called:
+        // showing and hiding is decided here only.
+        playerView.setOnTouchListener { _, event ->
             detector.onTouchEvent(event)
-            if (event.action == MotionEvent.ACTION_UP) view.performClick()
             true
         }
     }

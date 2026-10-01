@@ -91,9 +91,7 @@ class UpdateChecker {
       final body = await response.transform(utf8.decoder).join();
       final json = jsonDecode(body) as Map<String, dynamic>;
       final assets = (json["assets"] as List? ?? []).cast<Map>();
-      final asset = assets
-          .where((a) => _isAssetForThisPlatform(a["name"] as String? ?? ""))
-          .firstOrNull;
+      final asset = _assetForThisPlatform(assets);
       return ReleaseInfo(
         version: (json["tag_name"] as String).replaceFirst(
           RegExp(r"^[vV]"),
@@ -109,12 +107,25 @@ class UpdateChecker {
     }
   }
 
-  static bool _isAssetForThisPlatform(String name) {
-    final lower = name.toLowerCase();
-    if (Platform.isAndroid) return lower.endsWith(".apk");
-    if (Platform.isWindows) return lower.endsWith("-windows.zip");
-    if (Platform.isLinux) return lower.endsWith(".flatpak");
-    return false;
+  /// The file of this release to install, if any. On Windows the installer
+  /// wins over the zip of the portable build.
+  static Map? _assetForThisPlatform(List<Map> assets) {
+    for (final ending in _assetEndings) {
+      for (final asset in assets) {
+        final name = (asset["name"] as String? ?? "").toLowerCase();
+        if (name.endsWith(ending)) return asset;
+      }
+    }
+    return null;
+  }
+
+  static List<String> get _assetEndings {
+    if (Platform.isAndroid) return const [".apk"];
+    if (Platform.isWindows) {
+      return const ["-windows-setup.exe", "-windows.zip"];
+    }
+    if (Platform.isLinux) return const [".flatpak"];
+    return const [];
   }
 
   /// Compares dotted versions, e.g. 1.0.10 > 1.0.9.
@@ -190,11 +201,49 @@ class UpdateChecker {
     if (Platform.isAndroid) {
       await _channel.invokeMethod("installApk", {"path": file.path});
     } else if (Platform.isWindows) {
-      await _installWindows(file);
+      if (file.path.toLowerCase().endsWith(".exe")) {
+        await _runWindowsInstaller(file);
+      } else {
+        await _installWindows(file);
+      }
     }
   }
 
-  /// The Windows build is a portable folder. A detached PowerShell script
+  /// Runs the downloaded installer without asking anything, into the folder
+  /// this copy runs from, and starts the app again afterwards. The installer
+  /// cannot replace files in use, so it waits for this process to exit.
+  Future<void> _runWindowsInstaller(File installer) async {
+    final installDir = File(Platform.resolvedExecutable).parent.path;
+    final script = File("${installer.parent.path}\\run-installer.ps1");
+    String quote(String s) => "'${s.replaceAll("'", "''")}'";
+    await script.writeAsString('''
+\$ErrorActionPreference = 'Stop'
+\$installer = ${quote(installer.path)}
+\$installDir = ${quote(installDir)}
+Wait-Process -Id $pid -ErrorAction SilentlyContinue
+Start-Process -FilePath \$installer -ArgumentList @(
+  '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/NOCANCEL',
+  ('/DIR=' + \$installDir)
+) -Wait
+Start-Process -FilePath (Join-Path \$installDir 'haim_tv.exe') -WorkingDirectory \$installDir
+''');
+    await Process.start(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-WindowStyle",
+        "Hidden",
+        "-File",
+        script.path,
+      ],
+      mode: ProcessStartMode.detached,
+    );
+    exit(0);
+  }
+
+  /// The old Windows build is a portable folder. A detached PowerShell script
   /// waits for this process to exit, copies the new files over the
   /// installation folder and starts the app again.
   Future<void> _installWindows(File zip) async {
