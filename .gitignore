@@ -3,3 +3,6 @@ out
 
 # Installers produced by windows-installer/haim-tv.iss
 dist/
+
+# Android signing passwords; the keystore itself lives outside the repo
+flutter/android/key.properties

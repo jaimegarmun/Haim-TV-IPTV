@@ -60,6 +60,7 @@ class _PlayerState extends State<Player> {
   }
 
   Future<void> initAsync() async {
+    await blockGpuHwdecInterop();
     player.setPlaylistMode(mk.PlaylistMode.none);
     await setMpvOptions();
     final seconds = _isMovie ? await _startSeconds() : null;
@@ -114,6 +115,28 @@ class _PlayerState extends State<Player> {
       widget.channel.name,
       position.inSeconds,
       player.state.duration.inSeconds,
+    );
+  }
+
+  /// mpv loads every hwdec interop into its render context no matter what
+  /// `hwdec` says, and probing VAAPI surface formats aborts the whole process
+  /// when the NVIDIA VAAPI driver is installed: ffmpeg trips an av_assert0 in
+  /// av_image_copy and calls abort(), so the app dies as soon as anything is
+  /// opened. Blocking the interops keeps hardware decoding (nvdec-copy,
+  /// vaapi-copy) and only gives up the zero-copy path.
+  ///
+  /// This has to land before media_kit creates the render context, hence the
+  /// wait for libmpv itself followed by skipping setProperty's own wait, which
+  /// would otherwise block until the video controller is already up.
+  Future<void> blockGpuHwdecInterop() async {
+    if (!Platform.isLinux) return;
+    final nativePlayer = player.platform;
+    if (nativePlayer is! mk.NativePlayer) return;
+    await nativePlayer.waitForPlayerInitialization;
+    await nativePlayer.setProperty(
+      'gpu-hwdec-interop',
+      'no',
+      waitForInitialization: false,
     );
   }
 

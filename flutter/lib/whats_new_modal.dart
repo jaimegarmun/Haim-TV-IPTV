@@ -5,6 +5,11 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _whatsNewEn = '''
+New in 1.0.4:
+
+- Linux: fixed the app closing itself as soon as you opened a channel, a movie
+  or an episode on computers with an NVIDIA graphics card
+
 New in 1.0.3:
 
 - PC: double click goes fullscreen without pausing, and clicking the seek
@@ -45,6 +50,11 @@ Found a problem? Report it on GitHub from any error message.
 ''';
 
 const _whatsNewEs = '''
+Novedades de la 1.0.4:
+
+- Linux: arreglado el cierre de la app al abrir un canal, una película o un
+  episodio en equipos con tarjeta gráfica NVIDIA
+
 Novedades de la 1.0.3:
 
 - PC: el doble clic pasa a pantalla completa sin pausar, y pulsar la barra
