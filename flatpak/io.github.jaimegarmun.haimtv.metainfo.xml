@@ -40,6 +40,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.0.4" date="2026-10-04">
+      <description>
+        <p>Fixes the app closing itself on Linux as soon as a channel, movie or episode was opened, on machines with an NVIDIA graphics card.</p>
+      </description>
+    </release>
     <release version="1.0.3" date="2026-10-01">
       <description>
         <p>Player fixes (double click, volume, seeking), search inside folders, the window remembers its place, and a Windows installer.</p>
