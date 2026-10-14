@@ -30,6 +30,7 @@ Descarga el archivo de tu sistema desde [Releases](https://github.com/jaimegarmu
 | Sistema | Archivo | Cómo instalar |
 |---|---|---|
 | **Android / Android TV** | `HaimTV-<versión>-android.apk` | Ábrelo en el dispositivo y permite "instalar apps de origen desconocido" si te lo pide. |
+| **Fire OS 5** (Fire TV y tablets Fire que se quedaron en Android 5.1) | `HaimTV-<versión>-android-fireos5.apk` | Igual que el anterior. Instala este solo si el APK normal te dice que no es compatible con el dispositivo. |
 | **Windows 10/11** | `HaimTV-<versión>-windows.zip` | Descomprime la carpeta donde quieras y abre `haim_tv.exe`. |
 | **Linux** (Bazzite, Fedora, Ubuntu, SteamOS…) | `HaimTV-<versión>-linux.flatpak` | `flatpak install --user ./HaimTV-<versión>-linux.flatpak` |
 
@@ -44,6 +45,8 @@ cd flutter
 flutter pub get
 flutter run
 ```
+
+El APK para Fire OS 5 se compila aparte con `fireos5/build.sh`, porque Android 5.1 necesita una versión más antigua de Flutter: ver [`fireos5/`](fireos5/README.md).
 
 Las librerías nativas de Rust ya compiladas para Android y Windows están incluidas en el repositorio. Para recompilarlas hacen falta `cargo`, `cargo-ndk` y `cargo-cmd` (ver los comandos en `Cargo.toml`). El paquete Flatpak se describe en [`flatpak/`](flatpak/README.md).
 

@@ -11,6 +11,11 @@ if (keystorePropertiesFile.exists()) {
     keystorePropertiesFile.withInputStream { keystoreProperties.load(it) }
 }
 
+// The Fire OS 5 build passes its own minSdk in (see fireos5/README.md):
+// Android 5.1 is API 22, below what the Flutter version of the normal build
+// supports. Any other build follows the Flutter SDK.
+def legacyMinSdk = project.findProperty("haimtvMinSdk")
+
 android {
     namespace = "io.github.jaimegarmun.haimtv"
     compileSdk = 36
@@ -29,7 +34,7 @@ android {
         applicationId = "io.github.jaimegarmun.haimtv"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        minSdk = legacyMinSdk ? legacyMinSdk as Integer : flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

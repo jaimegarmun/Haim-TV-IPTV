@@ -5,6 +5,15 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 const _whatsNewEn = '''
+New in 1.0.5:
+
+- Live channels no longer jump back a few seconds on PC: when the server drops
+  the connection and sends again what was already watched, playback is put
+  back where it was
+- PC: the title bar of the window is dark, like the rest of the app
+- There is now an APK for Fire OS 5 (Android 5.1) devices, like the older Fire
+  TV sticks: the app offers each device the file it can install
+
 New in 1.0.4:
 
 - Linux: fixed the app closing itself as soon as you opened a channel, a movie
@@ -50,6 +59,16 @@ Found a problem? Report it on GitHub from any error message.
 ''';
 
 const _whatsNewEs = '''
+Novedades de la 1.0.5:
+
+- Los canales en directo ya no se van unos segundos hacia atrás en PC: cuando
+  el servidor corta la conexión y reenvía lo ya visto, la reproducción vuelve
+  al punto donde estaba
+- PC: la barra de título de la ventana es oscura, como el resto de la app
+- Ya hay un APK para dispositivos con Fire OS 5 (Android 5.1), como los Fire
+  TV Stick antiguos: la app ofrece a cada dispositivo el archivo que puede
+  instalar
+
 Novedades de la 1.0.4:
 
 - Linux: arreglado el cierre de la app al abrir un canal, una película o un

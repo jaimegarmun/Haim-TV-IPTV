@@ -1,0 +1,52 @@
+# Dependency set for the Fire OS 5 build (see fireos5/README.md).
+#
+# Fire OS 5 is Android 5.1 (API 22) and the Flutter version the app normally
+# uses needs API 24, so this variant is built with Flutter 3.32 (Dart 3.8), the
+# last series that still runs on API 21-23. Every constraint below keeps the
+# same upper bound as flutter/pubspec.yaml and only lowers the floor, so pub
+# picks the newest release of each package that works on Dart 3.8: the code in
+# flutter/lib is shared as is, with no changes for this build.
+name: open_tv
+description: "Haim TV - IPTV player (Fire OS 5 / Android 5.1 build)"
+publish_to: "none"
+
+version: 1.0.4+5
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ">=1.0.8 <2.0.0"
+  cached_network_image: ">=3.3.0 <4.0.0"
+  form_builder_validators: ">=11.0.0 <12.0.0"
+  flutter_form_builder: ">=10.0.0 <11.0.0"
+  file_picker: ">=10.0.0 <11.0.0"
+  url_launcher: ">=6.3.0 <7.0.0"
+  path_provider: ">=2.1.0 <3.0.0"
+  loader_overlay: ">=5.0.0 <6.0.0"
+  flutter_spinkit: ">=5.2.0 <6.0.0"
+  media_kit: ">=1.1.11 <2.0.0"
+  media_kit_video: ">=1.2.5 <3.0.0"
+  media_kit_libs_ios_video: ">=1.1.4 <2.0.0"
+  media_kit_libs_macos_video: ">=1.1.4 <2.0.0"
+  media_kit_libs_windows_video: ">=1.0.11 <2.0.0"
+  media_kit_libs_linux: ">=1.2.1 <2.0.0"
+  package_info_plus: ">=8.0.0 <10.0.0"
+  animations: ">=2.1.0 <3.0.0"
+  device_info_plus: ">=10.0.0 <13.0.0"
+  ffi: ">=2.1.0 <3.0.0"
+  protobuf: ">=4.0.0 <7.0.0"
+  fixnum: ">=1.1.0 <2.0.0"
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ">=5.0.0 <7.0.0"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/

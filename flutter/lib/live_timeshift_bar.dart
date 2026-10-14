@@ -27,7 +27,11 @@ Future<void> enableLiveTimeshift(mk.NativePlayer player) async {
 /// the live edge, like mpv's own timeline.
 class LiveTimeshiftBar extends StatefulWidget {
   final mk.Player player;
-  const LiveTimeshiftBar({super.key, required this.player});
+
+  /// Called before seeking, so the player knows this jump was asked for and
+  /// leaves it alone. See LiveContinuityGuard.
+  final VoidCallback? onViewerSeek;
+  const LiveTimeshiftBar({super.key, required this.player, this.onViewerSeek});
 
   @override
   State<LiveTimeshiftBar> createState() => _LiveTimeshiftBarState();
@@ -110,6 +114,7 @@ class _LiveTimeshiftBarState extends State<LiveTimeshiftBar> {
   bool get _atLiveEdge => _end - _position <= _liveTolerance;
 
   void _goLive() {
+    widget.onViewerSeek?.call();
     final target = _end - const Duration(seconds: 1);
     widget.player.seek(target > _start ? target : _end);
   }
@@ -151,6 +156,7 @@ class _LiveTimeshiftBarState extends State<LiveTimeshiftBar> {
               value: value,
               onChanged: (v) => setState(() => _dragging = v),
               onChangeEnd: (v) {
+                widget.onViewerSeek?.call();
                 setState(() => _dragging = null);
                 widget.player.seek(Duration(milliseconds: v.round()));
               },

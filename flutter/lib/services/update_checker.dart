@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:open_tv/models/device_detector.dart';
 import 'package:open_tv/services/json_file.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -91,7 +92,7 @@ class UpdateChecker {
       final body = await response.transform(utf8.decoder).join();
       final json = jsonDecode(body) as Map<String, dynamic>;
       final assets = (json["assets"] as List? ?? []).cast<Map>();
-      final asset = _assetForThisPlatform(assets);
+      final asset = _pickAsset(assets, await _assetEndings());
       return ReleaseInfo(
         version: (json["tag_name"] as String).replaceFirst(
           RegExp(r"^[vV]"),
@@ -109,8 +110,8 @@ class UpdateChecker {
 
   /// The file of this release to install, if any. On Windows the installer
   /// wins over the zip of the portable build.
-  static Map? _assetForThisPlatform(List<Map> assets) {
-    for (final ending in _assetEndings) {
+  static Map? _pickAsset(List<Map> assets, List<String> endings) {
+    for (final ending in endings) {
       for (final asset in assets) {
         final name = (asset["name"] as String? ?? "").toLowerCase();
         if (name.endsWith(ending)) return asset;
@@ -119,14 +120,28 @@ class UpdateChecker {
     return null;
   }
 
-  static List<String> get _assetEndings {
-    if (Platform.isAndroid) return const [".apk"];
+  /// Android needs the API level of the device: the normal APK needs Android
+  /// 7, so older ones (Fire OS 5 and the like) are offered the build made for
+  /// them instead. There is no falling back between the two on purpose, as
+  /// installing the wrong one just fails; without the file for this device the
+  /// dialog opens the release page.
+  static Future<List<String>> _assetEndings() async {
+    if (Platform.isAndroid) {
+      final sdk = await DeviceDetector.androidSdkInt() ?? _minSdkOfMainBuild;
+      return sdk < _minSdkOfMainBuild
+          ? const ["-fireos5.apk"]
+          : const ["-android.apk", ".apk"];
+    }
     if (Platform.isWindows) {
       return const ["-windows-setup.exe", "-windows.zip"];
     }
     if (Platform.isLinux) return const [".flatpak"];
     return const [];
   }
+
+  /// Lowest Android version the normal APK installs on (Android 7.0), set by
+  /// the Flutter version the app is built with.
+  static const _minSdkOfMainBuild = 24;
 
   /// Compares dotted versions, e.g. 1.0.10 > 1.0.9.
   static bool isNewer(String candidate, String current) {

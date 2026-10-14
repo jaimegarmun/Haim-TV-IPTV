@@ -40,6 +40,11 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.0.5" date="2026-10-15">
+      <description>
+        <p>Live channels no longer jump backwards when the server reconnects, and the window title bar follows the dark interface.</p>
+      </description>
+    </release>
     <release version="1.0.4" date="2026-10-04">
       <description>
         <p>Fixes the app closing itself on Linux as soon as a channel, movie or episode was opened, on machines with an NVIDIA graphics card.</p>

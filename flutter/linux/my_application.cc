@@ -193,9 +193,45 @@ static void on_window_destroy(GtkWidget* widget, gpointer user_data) {
   }
 }
 
+// The interface is always dark, but Flutter builds on GTK 3, which ignores the
+// desktop's "prefer dark" colour scheme: with the usual light Adwaita theme the
+// window got a white header bar sitting on top of the black app. Asking GTK for
+// the dark variant fixes the window controls and the menus, and the stylesheet
+// below paints the bar in the same tone the app uses for its own containers
+// (#1D2429) so the title bar looks like part of Haim TV. The black window
+// background also removes the pale flash before Flutter's first frame.
+static void use_dark_window_chrome() {
+  GtkSettings* settings = gtk_settings_get_default();
+  if (settings != nullptr) {
+    g_object_set(settings, "gtk-application-prefer-dark-theme", TRUE, nullptr);
+  }
+
+  GdkScreen* screen = gdk_screen_get_default();
+  if (screen == nullptr) {
+    return;
+  }
+  g_autoptr(GtkCssProvider) provider = gtk_css_provider_new();
+  gtk_css_provider_load_from_data(
+      provider,
+      "window { background-color: #000000; }\n"
+      "headerbar {\n"
+      "  background-image: none;\n"
+      "  background-color: #1d2429;\n"
+      "  border-bottom: 1px solid #000000;\n"
+      "  color: #ffffff;\n"
+      "}\n"
+      "headerbar .title { color: #ffffff; }\n"
+      "headerbar button { color: #ffffff; }\n",
+      -1, nullptr);
+  gtk_style_context_add_provider_for_screen(
+      screen, GTK_STYLE_PROVIDER(provider),
+      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+}
+
 // Implements GApplication::activate.
 static void my_application_activate(GApplication* application) {
   MyApplication* self = MY_APPLICATION(application);
+  use_dark_window_chrome();
   GtkWindow* window =
       GTK_WINDOW(gtk_application_window_new(GTK_APPLICATION(application)));
 

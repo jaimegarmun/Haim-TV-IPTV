@@ -6,3 +6,6 @@ dist/
 
 # Android signing passwords; the keystore itself lives outside the repo
 flutter/android/key.properties
+
+# Staging tree and rebuilt native libraries of the Fire OS 5 build
+fireos5/build/

@@ -19,6 +19,7 @@ import 'package:open_tv/live_timeshift_bar.dart';
 import 'package:open_tv/memory.dart';
 import 'package:open_tv/player_osd.dart';
 import 'package:open_tv/services/download_manager.dart';
+import 'package:open_tv/services/live_continuity.dart';
 import 'package:open_tv/services/player_prefs.dart';
 import 'package:open_tv/services/watch_progress.dart';
 import 'package:open_tv/l10n/l10n.dart';
@@ -42,6 +43,7 @@ class _PlayerState extends State<Player> {
   List<StreamSubscription> subscriptions = [];
   DateTime _lastProgressSave = DateTime.now();
   final ValueNotifier<OsdEvent?> osd = ValueNotifier(null);
+  final LiveContinuityGuard _liveContinuity = LiveContinuityGuard();
   late double _volumeBeforeMute = PlayerPrefs.instance.volume;
 
   /// Finished download of this channel, played instead of the stream.
@@ -87,7 +89,30 @@ class _PlayerState extends State<Player> {
     );
     if (_isMovie) {
       subscriptions.add(player.stream.position.listen(_onPosition));
+    } else if (_watchesLiveContinuity) {
+      subscriptions.add(player.stream.position.listen(_onLivePosition));
     }
+  }
+
+  /// Live channels are watched for the jumps backwards their servers cause on
+  /// every reconnection. Low latency mode turns the cache off, and without a
+  /// cache there is nothing to seek back into.
+  bool get _watchesLiveContinuity =>
+      widget.channel.mediaType == MediaType.livestream &&
+      !widget.settings.lowLatency &&
+      localFile == null;
+
+  /// Puts playback back where it was when the stream jumped backwards. See
+  /// [LiveContinuityGuard].
+  void _onLivePosition(Duration position) {
+    if (exiting) return;
+    final target = _liveContinuity.positionChanged(position);
+    if (target == null) return;
+    debugPrint(
+      "Live stream jumped back to ${position.inSeconds}s "
+      "(was at ${target.inSeconds}s). Seeking back.",
+    );
+    player.seek(target);
   }
 
   Future<int?> _startSeconds() async {
@@ -151,6 +176,9 @@ class _PlayerState extends State<Player> {
     // Read ahead enough to ride out a slow moment of the connection, and
     // reconnect instead of stopping when the server drops the stream.
     await nativePlayer.setProperty('cache', 'yes');
+    // Seeking inside the cache is what undoes the jumps backwards of a
+    // reconnection, so it stays on even when live rewind is off.
+    await nativePlayer.setProperty('demuxer-seekable-cache', 'yes');
     await nativePlayer.setProperty('demuxer-max-bytes', liveForwardBuffer);
     await nativePlayer.setProperty('demuxer-readahead-secs', '20');
     await nativePlayer.setProperty('network-timeout', '10');
@@ -180,6 +208,7 @@ class _PlayerState extends State<Player> {
   }
 
   Future<void> _startPlayback(Duration? startPosition) async {
+    _liveContinuity.reset();
     while (true) {
       if (!mounted || exiting) return;
       try {
@@ -341,6 +370,7 @@ class _PlayerState extends State<Player> {
   }
 
   void seekBy(Duration offset) {
+    _liveContinuity.viewerSeeked();
     final duration = player.state.duration;
     var target = player.state.position + offset;
     if (target < Duration.zero) target = Duration.zero;
@@ -583,7 +613,13 @@ class _PlayerState extends State<Player> {
         ),
         if (widget.channel.mediaType != MediaType.livestream)
           const MaterialDesktopPositionIndicator(),
-        if (_liveTimeshift) Expanded(child: LiveTimeshiftBar(player: player)),
+        if (_liveTimeshift)
+          Expanded(
+            child: LiveTimeshiftBar(
+              player: player,
+              onViewerSeek: _liveContinuity.viewerSeeked,
+            ),
+          ),
         const SizedBox(width: 20),
         IconButton(
           onPressed: openSubtitlesModal,
